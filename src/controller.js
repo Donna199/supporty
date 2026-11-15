@@ -25,17 +25,21 @@ export function buildPad(root, { send, local = false }) {
   root.innerHTML = `
     <div class="pad ${local ? 'local' : ''}" data-screen="title">
       <div class="pad-top">
-        <div class="pad-status"><span class="pdot"></span><span class="ptxt">Connecting…</span></div>
+        <div class="pad-status" role="status"><span class="pdot" aria-hidden="true"></span><span class="ptxt">Connecting…</span></div>
         <div class="pad-menu">
           <button class="pill" data-act="pause">${PAUSE_ICON}Pause</button>
           <button class="pill" data-act="mute">${SOUND_ICON}Sound</button>
         </div>
         <div class="pad-room"></div>
       </div>
+      <p class="pad-help" role="alert" hidden>
+        <b>This Wi-Fi is blocking the link.</b> Campus and public Wi-Fi often do.
+        Turn on this phone’s hotspot and join it from the computer (or use home Wi-Fi). You can also play with the computer’s keyboard.
+      </p>
       <div class="pad-main">
-        <div class="steer" aria-label="Steering pad">
-          <div class="arrow left">${ARROW(false)}</div>
-          <div class="arrow right">${ARROW(true)}</div>
+        <div class="steer" role="group" aria-label="Steering pad. On a keyboard, use the left and right arrow keys.">
+          <div class="arrow left" role="img" aria-label="Steer left">${ARROW(false)}</div>
+          <div class="arrow right" role="img" aria-label="Steer right">${ARROW(true)}</div>
         </div>
         <div class="centre">
           <button class="start-btn">Start</button>
@@ -54,6 +58,7 @@ export function buildPad(root, { send, local = false }) {
       send(msg);
     });
     for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, () => el.classList.remove('pressed'));
+    el.addEventListener('click', (e) => { if (e.detail === 0) send(msg); }); // Enter on a focused button (keyboard users)
   };
   tap($('[data-act=pause]'), { t: 'pause' });
   tap($('[data-act=mute]'), { t: 'mute' });
@@ -88,6 +93,8 @@ export function buildPad(root, { send, local = false }) {
       $('.pdot').className = `pdot ${state}`;
       $('.ptxt').textContent = text;
     },
+    /** Show or hide the "this network is blocking the link" help. */
+    setHelp(on) { $('.pad-help').hidden = !on; },
     setRoom(code) { $('.pad-room').textContent = code ? `Room ${code}` : ''; },
     setScreen(name) {
       const s = SCREEN_TEXT[name] || SCREEN_TEXT.title;
@@ -115,7 +122,9 @@ export function startController() {
     onStatus: (s) => {
       if (s === 'connected') pad.setStatus('ok', 'Connected');
       else if (s === 'lost') pad.setStatus('bad', 'Reconnecting…');
+      else if (s === 'blocked') pad.setStatus('bad', 'Can’t connect');
       else pad.setStatus('', 'Connecting…');
+      if (s === 'blocked') pad.setHelp(true); else if (s === 'connected') pad.setHelp(false);
     },
     onMessage: (msg) => {
       if (msg?.t === 'phase') pad.setPhase(msg.phase);
@@ -125,6 +134,7 @@ export function startController() {
     },
   });
   link.connect();
+  padKeys((msg) => { link.send(msg); });
   blockZoom();
   // Landscape by default: on the first tap, go full screen and lock to landscape where the phone allows it
   // (Android). Elsewhere the CSS draws the pad sideways when the phone is held upright.
@@ -132,12 +142,30 @@ export function startController() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wakeLock(true); });
 }
 
+// Keyboard on the controller page (WCAG 2.1.1): arrows or A / D steer, Space = Pull in, Enter = Start, Esc = Pause, M = Sound.
+function padKeys(send) {
+  const held = { left: false, right: false };
+  const steer = () => send({ t: 'steer', dir: (held.right ? 1 : 0) - (held.left ? 1 : 0) });
+  const key = (e, down) => {
+    const k = e.key;
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { if (held.left !== down) { held.left = down; steer(); } e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { if (held.right !== down) { held.right = down; steer(); } e.preventDefault(); }
+    else if (!down || e.repeat) return;
+    else if (k === ' ') { e.preventDefault(); send({ t: 'pull' }); }
+    else if (k === 'Enter') { if (e.target?.tagName !== 'BUTTON') send({ t: 'start' }); }
+    else if (k === 'Escape') send({ t: 'pause' });
+    else if (k === 'm' || k === 'M') send({ t: 'mute' });
+  };
+  window.addEventListener('keydown', (e) => key(e, true));
+  window.addEventListener('keyup', (e) => key(e, false));
+}
+
 function askForRoom(root) {
   root.innerHTML = `
     <form class="join">
       <h1>Supporty</h1>
-      <p>Type the 4-letter room code shown on the game screen.</p>
-      <input name="room" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD" />
+      <label for="room-code">Type the 4-letter room code shown on the game screen.</label>
+      <input id="room-code" name="room" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD" />
       <button class="start-btn">Join</button>
     </form>`;
   root.querySelector('form').addEventListener('submit', (e) => {

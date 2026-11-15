@@ -42,11 +42,11 @@ export class ReviewScreen {
     const s = log ? log.summary() : { stableDays: 0, manic: 0, depressive: 0, support: 0 };
     const epText = `${s.manic} manic, ${s.depressive} depressive`;
     app.ui.innerHTML = `
-      <div class="review">
+      <div class="review" tabindex="0" role="region" aria-label="Year in review, scrollable">
         <div class="card review-card" role="dialog" aria-labelledby="review-title">
           <h2 id="review-title">Your year on the road</h2>
           <canvas class="timeline" width="1200" height="440" role="img"></canvas>
-          <div class="legend"><span><i class="lg-line"></i>Mood</span><span><i class="lg-manic"></i>Manic episode</span><span><i class="lg-dep"></i>Depressive episode</span><span><i class="lg-stable"></i>Stable zone</span></div>
+          <div class="legend"><span><i class="lg-line"></i>Mood</span><span><i class="lg-manic"></i>Manic episode (M)</span><span><i class="lg-dep"></i>Depressive episode (D)</span><span><i class="lg-stable"></i>Stable zone</span></div>
           <div class="stats">
             <div><b data-count="${s.stableDays}">${s.stableDays}</b><span>days on the stable road</span></div>
             <div><b data-count="${s.manic + s.depressive}">${s.manic + s.depressive}</b><span>episodes (${epText})</span></div>
@@ -119,6 +119,12 @@ function drawTimeline(cv, log) {
   for (const ep of log?.episodes || []) {
     g.fillStyle = ep.phase === 'manic' ? 'rgba(217,71,156,0.28)' : 'rgba(95,116,135,0.32)';
     g.fillRect(x(ep.start), T, x(ep.end ?? total) - x(ep.start), H - T - B);
+  }
+  // Each shaded band also carries a letter, so episodes never rely on colour alone (WCAG 1.4.1).
+  g.fillStyle = '#3b3433'; g.textAlign = 'center'; g.textBaseline = 'top';
+  for (const ep of log?.episodes || []) {
+    const x0 = x(ep.start), x1 = x(ep.end ?? total);
+    if (x1 - x0 >= 22) g.fillText(ep.phase === 'manic' ? 'M' : 'D', (x0 + x1) / 2, T + 8);
   }
   // axes, zone words and month labels
   g.strokeStyle = '#3b3433'; g.lineWidth = 2; g.fillStyle = '#3b3433';

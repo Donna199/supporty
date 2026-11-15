@@ -14,6 +14,8 @@ Best on a laptop with a phone as controller.
 
 **No phone?** Use the keyboard: arrow keys (or A / D) steer, **Space** = Pull in, **Esc** = pause, **Enter** = start / continue, **M** = sound on / off. You can also choose "Play on this device instead" for on-screen buttons.
 
+**Phone stuck on "Connecting…"?** The phone talks straight to the laptop, and some networks (campus, hotel and public Wi-Fi) don't let devices do that. Turn on the phone's hotspot and join it from the laptop, or use home Wi-Fi. The keyboard always works.
+
 ## Content note
 
 This game depicts low mood and risky behaviour. It shows one composite experience of bipolar I disorder; experiences vary from person to person. If you're struggling, call or text **988** (US).

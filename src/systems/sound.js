@@ -1,10 +1,11 @@
 // sound.js: every sound in the game, generated in code with the Web Audio API
 // (oscillators, noise, filters, envelopes). No audio files.
 // - One-shot effects: soft and short (< 0.6 s), at most 4 playing at once.
-// - Ambience loops per phase (breeze, manic pulse, rain), crossfaded when the mood changes. No engine hum.
+// - Background music (see music.js) that follows the mood. No engine hum, no background noise.
 // - In a depressive episode a low-pass filter muffles everything.
 // Browsers only allow audio after a click/key on this page, so unlock() is called from a user gesture.
 import { CONFIG } from '../config.js';
+import { Music } from './music.js';
 
 const S = CONFIG.sound;
 const NOTE = { C4: 261.6, E4: 329.6, F4: 349.2, G4: 392, A4: 440, C5: 523.3, E5: 659.3, G5: 784, B5: 987.8, C6: 1046.5, D6: 1174.7, G6: 1568, B6: 1975.5 };
@@ -35,9 +36,10 @@ export class Sound {
   setMuted(on) {
     this.muted = on;
     if (this.master) this.master.gain.setTargetAtTime(on ? 0 : S.master, this.ctx.currentTime, 0.05);
+    if (this.music) this.music.muted = on;
   }
 
-  // ---------- Graph: sfx + ambience → muffle (low-pass) → master → speakers ----------
+  // ---------- Graph: sfx + music → muffle (low-pass) → master → speakers ----------
   _build() {
     const c = this.ctx;
     this.master = c.createGain();
@@ -51,13 +53,15 @@ export class Sound {
     this.sfx.gain.value = S.sfx;
     this.sfx.connect(this.muffle);
     this.amb = c.createGain();
-    this.amb.gain.value = S.ambience;
+    this.amb.gain.value = S.music.volume;
     this.amb.connect(this.muffle);
     // Shared noise buffer (2 s of white noise).
     this.noiseBuf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    this._buildAmbience();
+    this.music = new Music(c, this.amb, this.noiseBuf);
+    this.music.muted = this.muted;
+    this.music.start();
     this.setBlend(this.blend, 'stable', true);
   }
 
@@ -68,71 +72,13 @@ export class Sound {
     return n;
   }
 
-  _buildAmbience() {
-    const c = this.ctx, A = S.layers;
-    // Breeze: band-passed noise (stable).
-    const breeze = this._noise(true);
-    const bp = c.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 700;
-    bp.Q.value = 0.6;
-    this.breezeGain = c.createGain();
-    this.breezeGain.gain.value = 0;
-    breeze.connect(bp).connect(this.breezeGain).connect(this.amb);
-    // Manic pulse: a soft triangle note switched on and off by a fast square LFO.
-    const pulse = c.createOscillator();
-    pulse.type = 'triangle';
-    pulse.frequency.value = 220;
-    const chop = c.createGain();
-    chop.gain.value = 0.5;
-    const chopLfo = c.createOscillator();
-    chopLfo.type = 'square';
-    chopLfo.frequency.value = 6;
-    const chopDepth = c.createGain();
-    chopDepth.gain.value = 0.5;
-    chopLfo.connect(chopDepth).connect(chop.gain);
-    this.pulseGain = c.createGain();
-    this.pulseGain.gain.value = 0;
-    pulse.connect(chop).connect(this.pulseGain).connect(this.amb);
-    // Rain: high-ish filtered noise (depressive), plus random soft droplets (see _droplet).
-    const rain = this._noise(true);
-    const rainHP = c.createBiquadFilter();
-    rainHP.type = 'highpass';
-    rainHP.frequency.value = 900;
-    const rainLP = c.createBiquadFilter();
-    rainLP.type = 'lowpass';
-    rainLP.frequency.value = 5000;
-    this.rainGain = c.createGain();
-    this.rainGain.gain.value = 0;
-    rain.connect(rainHP).connect(rainLP).connect(this.rainGain).connect(this.amb);
-    for (const n of [breeze, pulse, chopLfo, rain]) n.start();
-    this.dropTimer = setInterval(() => {
-      if (this.blend.depressive > 0.3 && Math.random() < this.blend.depressive) this._droplet();
-    }, 260);
-  }
-
-  _droplet() {
-    const c = this.ctx, t = c.currentTime;
-    const o = c.createOscillator(), g = c.createGain();
-    o.frequency.setValueAtTime(1400 + Math.random() * 1200, t);
-    o.frequency.exponentialRampToValueAtTime(700, t + 0.06);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(S.layers.droplet * this.blend.depressive, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-    o.connect(g).connect(this.amb);
-    o.start(t);
-    o.stop(t + 0.1);
-  }
-
-  /** Ambience + muffle follow the mood: weights {stable, manic, depressive}; crossfades over ~2 s. */
+  /** Music + muffle follow the mood: weights {stable, manic, depressive}; the muffle eases in over ~2 s. */
   setBlend(w, phase = 'stable', instant = false) {
     const changed = Math.abs(w.manic - this.blend.manic) + Math.abs(w.depressive - this.blend.depressive) > 0.02;
     this.blend = { ...w };
     if (!this.ctx || (!changed && !instant)) return;
-    const t = this.ctx.currentTime, tc = instant ? 0.01 : S.crossfadeSec / 3, A = S.layers;
-    this.breezeGain.gain.setTargetAtTime(A.breeze * w.stable, t, tc);
-    this.pulseGain.gain.setTargetAtTime(A.pulse * w.manic, t, tc);
-    this.rainGain.gain.setTargetAtTime(A.rain * w.depressive, t, tc);
+    const t = this.ctx.currentTime, tc = instant ? 0.01 : S.crossfadeSec / 3;
+    this.music.setBlend(w);
     // Muffle everything as the mood leans low; fully muffled in a depressive episode.
     const hz = 18000 * Math.pow(S.muffleHz / 18000, w.depressive);
     this.muffle.frequency.setTargetAtTime(hz, t, tc);

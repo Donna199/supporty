@@ -40,34 +40,77 @@ export function label(text, { bg = '#fffaf0', fg = INK, height = 0.95 } = {}) {
 }
 
 /** Flat sign face with wrapped text. Returns the mesh; mesh.userData.setText(text) redraws it. */
-export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, round = false, px = 64 } = {}) {
+export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, round = false, px = 64, res = 512, fog = true, fit = false, badge = null, stroke = 12, radius = 28 } = {}) {
   const cv = document.createElement('canvas');
-  cv.width = 512; cv.height = Math.round((512 * h) / w);
+  const k = res / 512; // wide banners use a larger canvas so their words stay sharp
+  cv.width = res; cv.height = Math.round((res * h) / w);
   const g = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   const draw = (t) => {
     g.clearRect(0, 0, cv.width, cv.height);
-    if (round) { g.beginPath(); g.arc(256, 256, 250, 0, Math.PI * 2); } else roundRect(g, 6, 6, cv.width - 12, cv.height - 12, 28);
+    if (round) { g.beginPath(); g.arc(256, 256, 250, 0, Math.PI * 2); } else roundRect(g, 6 * k, 6 * k, cv.width - 12 * k, cv.height - 12 * k, radius * k);
     g.fillStyle = bg; g.fill();
-    g.lineWidth = 12; g.strokeStyle = INK; g.stroke();
-    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = `900 ${px}px Inter, system-ui, sans-serif`;
-    const words = t.split(' '); const lines = []; let line = '';
-    for (const word of words) {
-      const test = line ? `${line} ${word}` : word;
-      if (g.measureText(test).width > cv.width - 70 && line) { lines.push(line); line = word; } else line = test;
+    g.lineWidth = stroke * k; g.strokeStyle = INK; g.stroke();
+    // Optional round badge on the left with an arrow: which way this event pushes the mood.
+    let left = 0;
+    if (badge) {
+      const r = cv.height * 0.33, cx = cv.height * 0.56, cy = cv.height / 2;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2);
+      g.fillStyle = badge.color; g.fill();
+      g.lineWidth = 7 * k; g.stroke();
+      arrow(g, cx, cy, r * 0.62, badge.dir);
+      left = cx + r + 14 * k;
     }
-    lines.push(line);
-    const lh = px * 1.1;
-    lines.forEach((l, i) => g.fillText(l, cv.width / 2, cv.height / 2 + (i - (lines.length - 1) / 2) * lh + 4));
+    const room = cv.width - left - 60 * k; // width left for the words
+    const midX = left + room / 2 + (badge ? 0 : 30 * k);
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    let size = px;
+    const words = t.split(' '); let lines = []; let line = '';
+    if (fit) { // as large as the panel allows: one line, or two balanced lines if that makes the letters bigger
+      g.font = '900 100px Inter, system-ui, sans-serif';
+      const fitTo = (txt, maxH) => Math.floor(Math.min(cv.height * maxH, ((room - 60 * k) / g.measureText(txt).width) * 100));
+      size = fitTo(t, 0.6);
+      lines = [t];
+      for (let i = 1; i < words.length; i++) {
+        const a = words.slice(0, i).join(' '), b = words.slice(i).join(' ');
+        const two = Math.min(fitTo(a, 0.38), fitTo(b, 0.38));
+        if (two > size) { size = two; lines = [a, b]; }
+      }
+      g.font = `900 ${size}px Inter, system-ui, sans-serif`;
+    } else {
+      g.font = `900 ${size}px Inter, system-ui, sans-serif`;
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (g.measureText(test).width > cv.width - 70 * k && line) { lines.push(line); line = word; } else line = test;
+      }
+      lines.push(line);
+    }
+    const lh = size * 1.1;
+    lines.forEach((l, i) => g.fillText(l, badge ? midX : cv.width / 2, cv.height / 2 + (i - (lines.length - 1) / 2) * lh + 4 * k));
     tex.needsUpdate = true;
   };
   draw(text);
   const geo = round ? new THREE.CircleGeometry(w / 2, 24) : new THREE.PlaneGeometry(w, h);
-  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  tex.anisotropy = 8; // stays crisp when seen from far away or at an angle
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, fog }));
   mesh.userData.setText = draw;
   return mesh;
+}
+
+/** A chunky arrow centred at (cx, cy): dir 'up', 'down' or 'both' (up and down). */
+function arrow(g, cx, cy, s, dir) {
+  const head = (sign) => { // sign -1 = pointing up
+    g.beginPath();
+    g.moveTo(cx, cy + sign * s); g.lineTo(cx - s * 0.78, cy + sign * s * 0.2); g.lineTo(cx + s * 0.78, cy + sign * s * 0.2);
+    g.closePath(); g.fill();
+  };
+  g.fillStyle = INK;
+  const stem = s * 0.3;
+  if (dir === 'both') { head(-1); head(1); g.fillRect(cx - stem / 2, cy - s * 0.3, stem, s * 0.6); return; }
+  const sign = dir === 'up' ? -1 : 1;
+  head(sign);
+  g.fillRect(cx - stem / 2, sign === -1 ? cy - s * 0.25 : cy - s, stem, s * 1.25);
 }
 
 // ---------- Small shared pieces ----------
@@ -409,24 +452,34 @@ function harshSigns() {
 }
 
 // ---------- Life-event arch (scripted triggers fill all lanes) and finish ----------
-function spanArch(text, bg) {
+function spanArch(text, bg, badge = null) {
   const g = new THREE.Group();
   const x = HALF + 0.5;
-  g.add(box(0.35, 5.2, 0.35, 0x8d8a86, -x, 2.6, 0), box(0.35, 5.2, 0.35, 0x8d8a86, x, 2.6, 0));
-  g.add(box(x * 2 + 0.4, 1.25, 0.16, 0x3b3433, 0, 5.0, 0.04));
-  const p = textPanel(text, { w: x * 2, h: 1.1, bg, px: 100 });
-  p.position.set(0, 5.0, -0.06); p.rotation.y = Math.PI;
-  g.add(p);
+  g.add(box(0.35, 6.6, 0.35, 0x8d8a86, -x, 3.3, 0), box(0.35, 6.6, 0.35, 0x8d8a86, x, 3.3, 0));
+  // A tall banner whose words fill it (drawn at 2048 px wide, so they stay sharp; not faded by fog, so it reads in every phase).
+  const sign = new THREE.Group(); // backing board + words, anchored at the banner's bottom edge
+  sign.position.y = 4.1;
+  sign.add(box(x * 2 - 2.4, 1.6, 0.14, 0x3b3433, 0, 1.3, 0.05)); // slim back board, hidden behind the sign face
+  const p = textPanel(text, { w: x * 2 + 0.4, h: 2.4, bg, res: 2048, fog: false, fit: true, badge, stroke: 8, radius: 52 });
+  p.position.set(0, 1.3, -0.06); p.rotation.y = Math.PI;
+  sign.add(p);
+  g.add(sign);
+  // Far away the sign is drawn larger, so its words stay a readable size on screen; it settles to
+  // its real size on the arch as the kart arrives. `d` = metres ahead of the kart.
+  const B = CONFIG.banner;
+  g.userData.approach = (d) => sign.scale.setScalar(Math.max(1, Math.min(B.maxScale, (d + B.cameraBack) / B.fullSizeAt)));
   return g;
 }
-const SPAN_BG = { allNighter: '#c9cdea', redEye: '#c9cdea', trophy: '#ffe9a8', scheduleChaos: '#f6efe0', loss: '#c9d6e2', criticism: '#e9e9e6', stigmaBillboard: '#e4dbe8' };
+// Banner badge: which way the event pushes mood. Colours match the mood meter's HIGH (pink) and LOW (blue) zones.
+const UP = { dir: 'up', color: '#f8cfe6' }, DOWN = { dir: 'down', color: '#c9d6e2' }, BOTH = { dir: 'both', color: '#ffe9a8' };
+const SPAN_BADGE = { allNighter: UP, redEye: UP, trophy: UP, scheduleChaos: BOTH, loss: DOWN, criticism: DOWN, stigmaBillboard: DOWN };
 const SPAN_TEXT = { stigmaBillboard: 'Stigma: “What will people think?”', criticism: '“Just try harder”', loss: 'A loss' };
 
 function finish() {
   const g = spanArch('Graduation day', '#ffe9a8');
   const cap = new THREE.Group();
   cap.add(box(1.6, 0.12, 1.6, 0x3b3433, 0, 0.5, 0), box(0.9, 0.5, 0.9, 0x3b3433, 0, 0.2, 0), box(0.06, 0.6, 0.06, 0xf1b43a, 0.7, 0.2, 0.7));
-  cap.position.y = 6.0;
+  cap.position.y = 6.9;
   g.add(cap);
   // checkered strip on the road
   for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) {
@@ -484,11 +537,12 @@ const BUILDERS = {
 /** Builds the model for an item id. `span` = life event across all lanes (arch + icon in the middle lane). */
 export function buildItem(id, { span = false } = {}) {
   if (!span) return BUILDERS[id]();
-  const g = spanArch(SPAN_TEXT[id] || CONFIG.triggers[id]?.label || id, SPAN_BG[id] || '#fffaf0');
+  const g = spanArch(SPAN_TEXT[id] || CONFIG.triggers[id]?.label || id, '#fffaf0', SPAN_BADGE[id]);
   const icon = BUILDERS[id]();
   if (icon.userData.label) icon.remove(icon.userData.label); // the arch carries the words
   g.add(icon);
   g.userData.spin = icon.userData.spin;
-  g.userData.approach = icon.userData.approach;
+  const grow = g.userData.approach;
+  g.userData.approach = (d) => { grow(d); icon.userData.approach?.(d); };
   return g;
 }

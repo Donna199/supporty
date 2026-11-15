@@ -52,7 +52,8 @@ html, body {
 .screen {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  padding: 24px;
+  align-items: safe center; /* when zoomed in, tall content starts at the top and scrolls (WCAG 1.4.4, 1.4.10) */
+  padding: 24px; overflow-y: auto;
 }
 .card {
   background: var(--paper);
@@ -81,7 +82,10 @@ html, body {
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); transition-duration: 0.05s; }
 .btn.secondary { background: var(--paper); color: var(--ink); }
 .btn.secondary:hover { background: #fff3cf; }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+/* Keyboard focus (WCAG 2.4.7, 1.4.11): a dark ring on a yellow band, so it shows on cream cards and on the 3D scene alike. */
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; box-shadow: 0 0 0 4px var(--yellow) !important; }
+/* Text for screen readers only. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .btn.small { font-size: 16px; padding: 6px 16px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 
@@ -132,7 +136,7 @@ html, body {
 }
 .logo-ticks { position: absolute; left: -0.08em; top: -0.36em; width: 0.5em; height: 0.3em; transform: rotate(-12deg); }
 .logo-ticks path { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; }
-.logo-star { position: absolute; fill: var(--yellow); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; animation: twinkle 2.4s ease-in-out infinite; }
+.logo-star { position: absolute; fill: var(--yellow); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; animation: twinkle 2.2s ease-in-out 2; } /* decorative: stops within 5 s (WCAG 2.2.2) */
 .logo-star.s1 { right: -0.46em; top: -0.14em; width: 0.34em; height: 0.34em; }
 .logo-star.s2 { right: -0.66em; top: 0.32em; width: 0.22em; height: 0.22em; animation-delay: 0.8s; }
 .logo-star.s3 { left: 1.6em; top: -0.4em; width: 0.2em; height: 0.2em; animation-delay: 1.6s; }
@@ -203,17 +207,20 @@ html, body {
 .room span:nth-child(2) { background: #ffe08a; animation-delay: 0.05s; } .room span:nth-child(3) { background: var(--mint); animation-delay: 0.1s; }
 .room span:nth-child(4) { background: #f8bcd0; animation-delay: 0.15s; }
 @keyframes tile-in { from { opacity: 0; transform: translateY(8px) scale(0.8); } }
+.network-tip[hidden] { display: none; }
 .network-tip {
   margin: 0 auto 8px; padding: 6px 12px; border-radius: 14px; background: #eef5e8;
   font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--ink-soft);
 }
 .status {
   font-weight: 800; font-size: 15px; display: inline-flex; gap: 8px; align-items: center; justify-content: center;
-  background: var(--cream); border-radius: 999px; padding: 4px 14px; transition: background-color 0.3s;
+  background: var(--cream); border-radius: 16px; padding: 4px 14px; transition: background-color 0.3s;
+  line-height: 1.3; text-align: left; /* long messages (blocked network) wrap neatly */
 }
+.status .dot { flex: none; }
 /* The status pill changes colour AND words; the dot pulses while waiting for the phone. */
 .status:has(.dot.ok) { background: #dcf0d5; } .status:has(.dot.bad) { background: #fbe1dc; }
-.status .dot:not(.ok):not(.bad) { animation: ping 1.5s ease-out infinite; }
+.status .dot:not(.ok):not(.bad) { animation: ping 1.5s ease-out 3; }
 @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(224, 164, 60, 0.7); } 100% { box-shadow: 0 0 0 9px rgba(224, 164, 60, 0); } }
 .qr-card .link { display: block; margin: 4px auto 0; font-size: 15px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; background: #e0a43c; border: 2px solid var(--ink); transition: background-color 0.3s; }
@@ -224,7 +231,7 @@ html, body {
 .press-start {
   background: var(--paper); border: 3px solid var(--ink); border-radius: 999px;
   padding: 8px 18px; font-weight: 900; font-size: 18px; box-shadow: 0 4px 0 var(--ink);
-  animation: bob 1.6s ease-in-out infinite;
+  animation: bob 1.6s ease-in-out 3; /* stops within 5 s (WCAG 2.2.2) */
 }
 @keyframes bob { 50% { transform: translateY(-4px); } }
 
@@ -453,7 +460,7 @@ body:has(.local-pad) .skip-practice { bottom: auto; top: 130px; }
 #fx { transition: box-shadow 1s, background 1s; }
 #fx[data-phase='manic'] {
   box-shadow: inset 0 0 60px 18px rgba(255, 80, 190, 0.45);
-  animation: edge-flicker 0.9s steps(3) infinite;
+  animation: edge-flicker 1.5s steps(3) infinite; /* 2 colour changes a second: under the 3-per-second flash limit (WCAG 2.3.1) */
 }
 #fx[data-phase='depressive'] { box-shadow: inset 0 0 120px 40px rgba(60, 70, 85, 0.5); }
 #fx.dim { background: rgba(30, 34, 42, 0.45); transition: background 0.8s; }
@@ -490,7 +497,7 @@ body:has(.local-pad) .skip-practice { bottom: auto; top: 130px; }
 @media (max-width: 900px) { .stats { grid-template-columns: 1fr; } .review { justify-content: center; } }
 
 /* ---------- Story intro ---------- */
-.intro { justify-content: flex-end; align-items: flex-end; padding: 32px; }
+.intro { justify-content: flex-end; align-items: flex-end; align-items: safe flex-end; padding: 32px; }
 .top-actions { position: absolute; top: 16px; right: 16px; z-index: 2; display: flex; gap: 10px; }
 .story-card { max-width: 520px; cursor: pointer; }
 .story-guardrails { display: none; gap: 6px; margin-bottom: 10px; transform: scale(1.4); transform-origin: left center; }

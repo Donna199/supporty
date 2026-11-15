@@ -20,11 +20,11 @@ export class IntroScreen {
           <button class="btn secondary guide-btn">Road guide</button>
           <button class="btn secondary skip">Skip intro</button>
         </div>
-        <div class="card story-card" role="dialog" aria-live="polite" tabindex="-1">
+        <div class="card story-card" role="region" aria-label="Story">
           <div class="story-guardrails" aria-hidden="true">${'<span class="gr-fence on"><i></i><i></i><i></i><b></b><b></b></span>'.repeat(2)}<span class="gr-fence"><i></i><i></i><i></i><b></b><b></b></span></div>
-          <p class="story-text"></p>
+          <p class="story-text" aria-live="polite"></p>
           <div class="row story-foot">
-            <div class="dots">${this.cards.map(() => '<i></i>').join('')}</div>
+            <div class="dots" aria-hidden="true">${this.cards.map(() => '<i></i>').join('')}</div><span class="sr-only card-count"></span>
             <button class="btn next">Next</button>
           </div>
           <p class="hint">Space, Enter, click, or Start on your phone</p>
@@ -47,6 +47,7 @@ export class IntroScreen {
     text.classList.remove('swap'); void text.offsetWidth; text.classList.add('swap'); // ease each card in
     $('.story-guardrails').classList.toggle('show', this.index === GUARDRAIL_CARD);
     this.app.ui.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i === this.index));
+    $('.card-count').textContent = `Card ${this.index + 1} of ${this.cards.length}`;
     $('.next').textContent = this.index === this.cards.length - 1 ? 'Road guide' : 'Next';
   }
 

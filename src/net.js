@@ -1,6 +1,8 @@
 // net.js: the phone link. The game screen opens a PeerJS "room" named by a
 // 4-letter code and shows it as a QR code; the phone joins that room.
 // Messages are small JSON objects, e.g. {t:'steer', dir:-1}. See PRD "Messages".
+// The link is direct phone-to-laptop (WebRTC). Some networks (campus, hotel, public Wi-Fi)
+// stop devices talking to each other; both sides then report 'blocked' so the UI can say so.
 import Peer from 'peerjs';
 import QRCode from 'qrcode';
 import { CONFIG } from './config.js';
@@ -31,7 +33,7 @@ export function drawQR(canvas, text) {
 export class HostLink {
   constructor({ onMessage, onStatus }) {
     this.onMessage = onMessage;
-    this.onStatus = onStatus; // 'opening' | 'waiting' | 'connected' | 'lost' | 'error'
+    this.onStatus = onStatus; // 'opening' | 'waiting' | 'linking' | 'blocked' | 'connected' | 'lost' | 'error'
     this.conn = null;
     this.status = 'opening';
     this.lastSeen = 0;
@@ -59,7 +61,14 @@ export class HostLink {
   _accept(conn) {
     if (this.conn && this.conn !== conn) this.conn.close();
     this.conn = conn;
+    // The phone has found the room. If the direct link doesn't open in time, the network is blocking it.
+    if (this.status === 'waiting') this._set('linking');
+    clearTimeout(this.linkTimer);
+    this.linkTimer = setTimeout(() => {
+      if (this.conn === conn && !conn.open && ['linking', 'waiting'].includes(this.status)) this._set('blocked');
+    }, N.linkTimeoutSec * 1000);
     conn.on('open', () => {
+      clearTimeout(this.linkTimer);
       this.lastSeen = performance.now();
       this.everConnected = true;
       this._set('connected');
@@ -93,7 +102,7 @@ export class PhoneLink {
   constructor(code, { onMessage, onStatus }) {
     this.code = code;
     this.onMessage = onMessage;
-    this.onStatus = onStatus; // 'connecting' | 'connected' | 'lost'
+    this.onStatus = onStatus; // 'connecting' | 'blocked' | 'connected' | 'lost'
     this.conn = null;
   }
 
@@ -115,7 +124,8 @@ export class PhoneLink {
     conn.on('open', () => this.onStatus('connected'));
     conn.on('data', (msg) => this.onMessage(msg));
     conn.on('close', () => { if (this.conn === conn) { this.conn = null; this.onStatus('lost'); this._retry(); } });
-    setTimeout(() => { if (this.conn === conn && !conn.open) { conn.close(); this.conn = null; this._retry(); } }, 7000);
+    // Found the room but the direct link won't open: say so (and keep trying quietly).
+    setTimeout(() => { if (this.conn === conn && !conn.open) { conn.close(); this.conn = null; this.onStatus('blocked'); this._retry(); } }, N.linkTimeoutSec * 1000);
   }
 
   _retry() {

@@ -14,6 +14,8 @@ const LOGO = ['outer', 'edge', 'line', 'depth', 'face']
 const STATUS = {
   opening: ['', 'Opening a room…'],
   waiting: ['', 'Waiting for your phone'],
+  linking: ['', 'Phone found. Connecting…'],
+  blocked: ['bad', 'This Wi-Fi is blocking the phone link. Join your phone’s hotspot from this computer (or use home Wi-Fi), or play with the keyboard.'],
   connected: ['ok', 'Controller connected'],
   lost: ['bad', 'Controller disconnected. Scan again to reconnect.'],
   error: ['bad', 'The phone link is blocked on this network. Use the keyboard or “Play on this device”.'],
@@ -55,10 +57,10 @@ export class TitleScreen {
           <div class="card qr-card">
             <div class="qr-tag">Phone controller</div>
             <p class="qr-lead">Scan with your phone camera to use it as the controller</p>
-            <div class="qr-frame"><canvas class="qr" width="420" height="420" aria-label="QR code for the phone controller"></canvas></div>
-            <div class="room" aria-label="Room code"></div>
+            <div class="qr-frame"><canvas class="qr" width="420" height="420" role="img" aria-label="QR code for the phone controller"></canvas></div>
+            <div class="room" role="img" aria-label="Room code"></div>
             <div class="network-tip">Make sure your phone and this computer are on the same Wi-Fi network.</div>
-            <div class="status"><span class="dot"></span><span class="status-text"></span></div>
+            <div class="status" role="status"><span class="dot" aria-hidden="true"></span><span class="status-text"></span></div>
             <button class="link local-link">Play on this device instead</button>
           </div>
           <div class="press-start">Press Start on your phone, or Enter</div>
@@ -104,10 +106,12 @@ export class TitleScreen {
     }
     const [cls, text] = STATUS[app.net.status] || STATUS.opening;
     $('.dot').className = `dot ${cls}`;
-    $('.status-text').textContent = text;
+    $('.network-tip').hidden = app.net.status === 'blocked'; // the blocked message says more
+    if ($('.status-text').textContent !== text) $('.status-text').textContent = text; // announced once per change
     if (this.qrCode !== app.net.code) {
       this.qrCode = app.net.code;
-      $('.room').innerHTML = [...(app.net.code || '')].map((c) => `<span>${c}</span>`).join(''); // one pastel tile per letter
+      $('.room').innerHTML = [...(app.net.code || '')].map((c) => `<span aria-hidden="true">${c}</span>`).join(''); // one pastel tile per letter
+      $('.room').setAttribute('aria-label', `Room code ${[...(app.net.code || '')].join(' ')}`);
       drawQR($('.qr'), controllerUrl(app.net.code));
     }
     $('.press-start').textContent = app.net.connected ? 'Press Start on your phone' : 'Press Enter to play with the keyboard';

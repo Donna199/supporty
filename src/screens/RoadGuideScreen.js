@@ -5,16 +5,21 @@ import { GUIDE } from '../content.js';
 import { drawInto } from '../world/thumbs.js';
 
 const VISUAL = {
-  meter: '<div class="mini-meter"><span>LOW</span><span>STABLE</span><span>HIGH</span><i style="left:50%"></i></div>',
-  manic: '<div class="mini-scene manic"><b></b><b></b><b></b><div class="mini-meter"><span></span><span></span><span></span><i style="left:96%"></i></div></div>',
-  depressive: '<div class="mini-scene depressive"><b></b><b></b><b></b><b></b><div class="mini-meter"><span></span><span></span><span></span><i style="left:4%"></i></div></div>',
+  meter: '<div class="mini-meter" aria-hidden="true"><span>LOW</span><span>STABLE</span><span>HIGH</span><i style="left:50%"></i></div>',
+  manic: '<div class="mini-scene manic" aria-hidden="true"><b></b><b></b><b></b><div class="mini-meter"><span></span><span></span><span></span><i style="left:96%"></i></div></div>',
+  depressive: '<div class="mini-scene depressive" aria-hidden="true"><b></b><b></b><b></b><b></b><div class="mini-meter"><span></span><span></span><span></span><i style="left:4%"></i></div></div>',
 };
 
 /** Opens the guide inside `holder`. Calls onDone when the button is pressed. */
 export function openGuide(holder, app, { button, onDone }) {
   holder.className = 'guide-layer';
+  holder.tabIndex = 0; // the list scrolls with the arrow keys (WCAG 2.1.1)
+  holder.setAttribute('aria-label', 'Road guide, scrollable');
+  // While the guide is open, whatever is behind it can't be tabbed to (WCAG 2.4.3).
+  const behind = [...(holder.parentElement?.children || [])].filter((el) => el !== holder && !el.inert);
+  behind.forEach((el) => { el.inert = true; });
   holder.innerHTML = `
-    <div class="guide" role="dialog" aria-labelledby="guide-title">
+    <div class="guide" role="dialog" aria-modal="true" aria-labelledby="guide-title">
       <h2 id="guide-title">Your road guide</h2>
       ${GUIDE.map((g) => `
         <h3>${g.heading}</h3>
@@ -38,7 +43,7 @@ export function openGuide(holder, app, { button, onDone }) {
     requestAnimationFrame(spin);
   };
   spin();
-  const close = () => { if (!open) return; open = false; offs.forEach((off) => off()); onDone(); };
+  const close = () => { if (!open) return; open = false; offs.forEach((off) => off()); behind.forEach((el) => { el.inert = false; }); onDone(); };
   holder.querySelector('.done').addEventListener('click', close);
   holder.querySelector('.done').focus({ preventScroll: true });
   const offs = [app.input.on('start', close), app.input.on('pull', close)];

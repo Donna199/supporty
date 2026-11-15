@@ -128,12 +128,15 @@ export const CONFIG = {
   sound: {
     master: 0.5,          // overall volume
     sfx: 0.8,             // one-shot effects
-    ambience: 0.35,       // looping breeze / pulse / rain (no engine hum)
-    layers: { breeze: 0.07, pulse: 0.05, rain: 0.12, droplet: 0.05 },
+    // Background music (systems/music.js): quiet, and its speed follows the mood.
+    music: { volume: 0.6, bpm: { stable: 108, manic: 152, depressive: 70 } },
     maxVoices: 4,         // never more than 4 one-shots at once
-    crossfadeSec: 2,      // ambience crossfade when the phase changes
+    crossfadeSec: 2,      // how quickly the muffle eases in when the phase changes
     muffleHz: 900,        // low-pass on everything in a depressive episode
   },
+
+  // Life-event banners across the road: drawn larger while far away so the words can be read early.
+  banner: { fullSizeAt: 28, cameraBack: 10, maxScale: 5 }, // real size within ~18 m; up to 5x at a distance
 
   pullWindow: [-28, 6],   // you can pull in from 28 m before a stop until 6 m after it
   captionSec: 3,          // PRD: story caption shown for 3 seconds
@@ -174,5 +177,6 @@ export const CONFIG = {
     skin: 0xfde4c5, blush: 0xf4a1a8, eyeWhite: 0xffffff, pupil: 0x3b1f17,
   },
 
-  net: { peerPrefix: 'supporty-v1-', roomLetters: 'BCDFGHJKLMNPQRSTVWXZ' },
+  // linkTimeoutSec: if the phone finds the room but the direct link has not opened by then, the network is blocking it.
+  net: { peerPrefix: 'supporty-v1-', roomLetters: 'BCDFGHJKLMNPQRSTVWXZ', linkTimeoutSec: 8 },
 };

@@ -177,16 +177,17 @@ export class DriveScreen {
     const { app } = this;
     const layer = app.ui.querySelector('.pause-layer');
     if (!layer) return;
+    this.hud.el.inert = this.paused; // keyboard focus stays inside the pause menu (WCAG 2.4.3)
     if (!this.paused) { layer.innerHTML = ''; return; }
     const needPhone = !app.localPad && app.net.everConnected && app.net.status !== 'connected';
     layer.innerHTML = `
       <div class="screen dim">
-        <div class="card pause-card">
-          <h2>${needPhone ? 'Controller disconnected' : 'Paused'}</h2>
-          ${needPhone ? `<p>Scan to reconnect your phone, or keep going with the keyboard.</p><canvas class="qr" width="420" height="420"></canvas><div class="room">${[...(app.net.code || '')].map((c) => `<span>${c}</span>`).join('')}</div>` : ''}
+        <div class="card pause-card" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <h2 id="pause-title">${needPhone ? 'Controller disconnected' : 'Paused'}</h2>
+          ${needPhone ? `<p>Scan to reconnect your phone, or keep going with the keyboard.</p><canvas class="qr" width="420" height="420" role="img" aria-label="QR code for the phone controller"></canvas><div class="room" role="img" aria-label="Room code ${[...(app.net.code || '')].join(' ')}">${[...(app.net.code || '')].map((c) => `<span aria-hidden="true">${c}</span>`).join('')}</div>` : ''}
           <div class="row">
             <button class="btn resume">Resume</button>
-            <button class="btn secondary guide">Road guide</button>
+            <button class="btn secondary open-guide">Road guide</button>
             <button class="btn secondary restart">Restart</button>
             <button class="btn secondary mute">${app.muted ? 'Sound on' : 'Mute'}</button>
           </div>
@@ -195,7 +196,7 @@ export class DriveScreen {
     if (needPhone) drawQR(layer.querySelector('.qr'), controllerUrl(app.net.code));
     layer.querySelector('.resume').addEventListener('click', () => this.togglePause(false));
     layer.querySelector('.restart').addEventListener('click', () => app.show('title'));
-    layer.querySelector('.guide').addEventListener('click', () => {
+    layer.querySelector('.open-guide').addEventListener('click', () => {
       const holder = document.createElement('div');
       app.ui.appendChild(holder);
       this.guideOpen = true;

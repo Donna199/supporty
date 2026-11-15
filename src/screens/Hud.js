@@ -26,7 +26,7 @@ export class Hud {
           <div class="cal-month">January</div>
           <div class="cal-sub">Month 1 of 12</div>
           <div class="cal-bar"><div class="cal-fill"></div></div>
-          <div class="coin-count" aria-label="Coins"><i class="coin-dot"></i><span>0</span></div>
+          <div class="coin-count"><i class="coin-dot" aria-hidden="true"></i><span class="sr-only">Coins: </span><span class="coin-num">0</span></div>
         </div>
         <div class="meter" role="meter" aria-label="Mood" aria-valuemin="-100" aria-valuemax="100">
           <div class="meter-track">
@@ -37,9 +37,9 @@ export class Hud {
           </div>
           <div class="episode"><span class="episode-name"></span><div class="episode-bar"><div class="episode-fill"></div></div></div>
         </div>
-        <div class="guardrails" aria-label="Guardrails">
+        <div class="guardrails" role="img" aria-label="Guardrails: 2 of 3">
           <div class="gr-icons">${fence}${fence}${fence}</div>
-          <div class="gr-label">Guardrails</div>
+          <div class="gr-label" aria-hidden="true">Guardrails</div>
         </div>
         <div class="mirror" aria-hidden="true">
           <div class="mirror-glass"><div class="mirror-road"></div>
@@ -48,7 +48,7 @@ export class Hud {
           <div class="mirror-label">Friends falling behind</div>
         </div>
         <button class="icon-btn pause-btn" aria-label="Pause" title="Pause (Esc)">${PAUSE_ICON}</button>
-        <div class="pull-prompt"></div>
+        <div class="pull-prompt" role="status" aria-live="polite"></div>
         <div class="key-hint"><kbd>Space</kbd> Pull in</div>
         <button class="skip-practice" hidden></button>
         <div class="popup" role="status" aria-live="polite"><span class="popup-icon"></span><span class="popup-text"></span></div>
@@ -57,7 +57,7 @@ export class Hud {
     const $ = (s) => this.el.querySelector(s);
     this.$ = { month: $('.cal-month'), sub: $('.cal-sub'), fill: $('.cal-fill'), bar: $('.cal-bar'), meter: $('.meter'),
       needle: $('.needle'), episode: $('.episode'), epName: $('.episode-name'), epFill: $('.episode-fill'),
-      gr: [...this.el.querySelectorAll('.gr-fence')], pull: $('.pull-prompt'), coins: $('.coin-count span'), coinBox: $('.coin-count'),
+      gr: [...this.el.querySelectorAll('.gr-fence')], pull: $('.pull-prompt'), coins: $('.coin-num'), coinBox: $('.coin-count'),
       mirror: $('.mirror'), friends: [...this.el.querySelectorAll('.friend')],
       popup: $('.popup'), popIcon: $('.popup-icon'), popText: $('.popup-text'),
       grBox: $('.guardrails'), needleHead: $('.needle-head'), keyHint: $('.key-hint'), skip: $('.skip-practice') };
@@ -75,6 +75,11 @@ export class Hud {
     const $ = this.$;
     $.needle.style.left = `${50 + (s.mood / M.max) * 50}%`;
     $.meter.setAttribute('aria-valuenow', Math.round(s.mood));
+    // Words for screen readers, updated only when they change (WCAG 4.1.2).
+    const zone = s.phase === 'manic' ? 'Manic episode' : s.phase === 'depressive' ? 'Depressive episode'
+      : s.mood > M.stable ? 'Leaning high' : s.mood < -M.stable ? 'Leaning low' : 'Stable';
+    if (zone !== this.zoneText) { this.zoneText = zone; $.meter.setAttribute('aria-valuetext', zone); }
+    if (s.guardrails !== this.grShown) { this.grShown = s.guardrails; $.grBox.setAttribute('aria-label', `Guardrails: ${s.guardrails} of ${M.maxGuardrails}`); }
     $.meter.dataset.phase = s.phase;
     this.el.dataset.phase = s.phase;
     const mi = Math.min(11, s.monthIndex);
