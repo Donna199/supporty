@@ -48,6 +48,7 @@ export class TitleScreen {
             <canvas class="qr" width="420" height="420" aria-label="QR code for the phone controller"></canvas>
             <div class="room"></div>
             <div class="hint">Scan with your phone camera to use it as the controller</div>
+            <div class="network-tip">📶 Make sure your phone and this computer are on the same Wi-Fi network.</div>
             <div class="status"><span class="dot"></span><span class="status-text"></span></div>
             <button class="link local-link">Play on this device instead</button>
           </div>

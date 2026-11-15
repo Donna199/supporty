@@ -115,6 +115,10 @@ html, body {
 
 .title-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; }
 .qr-card { text-align: center; padding: 18px 20px; max-width: 300px; }
+.network-tip {
+  margin: 8px auto 2px; padding: 6px 10px; border-radius: 10px; background: #eef5e8;
+  font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--ink-soft);
+}
 .qr-card canvas { display: block; width: 210px !important; height: 210px !important; margin: 0 auto; border-radius: 10px; }
 .room { font-weight: 900; font-size: 34px; letter-spacing: 8px; margin: 8px 0 2px; }
 .status { font-weight: 800; font-size: 16px; display: flex; gap: 8px; align-items: center; justify-content: center; }
