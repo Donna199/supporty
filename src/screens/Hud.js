@@ -14,6 +14,9 @@ const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 const fence = '<span class="gr-fence"><i></i><i></i><i></i><b></b><b></b></span>';
 const GLYPH = { up: '↑', down: '↓', good: '✓', info: '•', manic: '↑', depressive: '↓', story: '✦' };
 const now = () => performance.now() / 1000;
+const PAUSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="2" width="5" height="16" rx="2"/><rect x="12" y="2" width="5" height="16" rx="2"/></svg>';
+/** Restart a one-shot CSS animation class (month pop, coin bump). */
+const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
 export class Hud {
   constructor(root, { onPause }) {
@@ -44,7 +47,7 @@ export class Hud {
           </div>
           <div class="mirror-label">Friends falling behind</div>
         </div>
-        <button class="icon-btn pause-btn" aria-label="Pause">❚❚</button>
+        <button class="icon-btn pause-btn" aria-label="Pause" title="Pause (Esc)">${PAUSE_ICON}</button>
         <div class="pull-prompt"></div>
         <div class="key-hint"><kbd>Space</kbd> Pull in</div>
         <button class="skip-practice" hidden></button>
@@ -54,7 +57,7 @@ export class Hud {
     const $ = (s) => this.el.querySelector(s);
     this.$ = { month: $('.cal-month'), sub: $('.cal-sub'), fill: $('.cal-fill'), bar: $('.cal-bar'), meter: $('.meter'),
       needle: $('.needle'), episode: $('.episode'), epName: $('.episode-name'), epFill: $('.episode-fill'),
-      gr: [...this.el.querySelectorAll('.gr-fence')], pull: $('.pull-prompt'), coins: $('.coin-count span'),
+      gr: [...this.el.querySelectorAll('.gr-fence')], pull: $('.pull-prompt'), coins: $('.coin-count span'), coinBox: $('.coin-count'),
       mirror: $('.mirror'), friends: [...this.el.querySelectorAll('.friend')],
       popup: $('.popup'), popIcon: $('.popup-icon'), popText: $('.popup-text'),
       grBox: $('.guardrails'), needleHead: $('.needle-head'), keyHint: $('.key-hint'), skip: $('.skip-practice') };
@@ -78,11 +81,13 @@ export class Hud {
     if ($.month.textContent !== FULL_MONTHS[mi]) {
       $.month.textContent = FULL_MONTHS[mi];
       $.sub.textContent = `Month ${mi + 1} of 12`;
+      replay($.month, 'pop');
     }
     $.fill.style.width = `${Math.min(1, s.monthProgress) * 100}%`;
     $.bar.dataset.phase = s.phase;
     $.gr.forEach((g, i) => g.classList.toggle('on', i < s.guardrails));
-    $.coins.textContent = s.coins ?? 0;
+    const coins = String(s.coins ?? 0);
+    if ($.coins.textContent !== coins) { $.coins.textContent = coins; replay($.coinBox, 'bump'); }
     const inEp = s.phase !== 'stable';
     $.episode.classList.toggle('show', inEp);
     if (inEp) {

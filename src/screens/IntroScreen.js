@@ -42,7 +42,9 @@ export class IntroScreen {
 
   render() {
     const $ = (s) => this.app.ui.querySelector(s);
-    $('.story-text').textContent = this.cards[this.index];
+    const text = $('.story-text');
+    text.textContent = this.cards[this.index];
+    text.classList.remove('swap'); void text.offsetWidth; text.classList.add('swap'); // ease each card in
     $('.story-guardrails').classList.toggle('show', this.index === GUARDRAIL_CARD);
     this.app.ui.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i === this.index));
     $('.next').textContent = this.index === this.cards.length - 1 ? 'Road guide' : 'Next';

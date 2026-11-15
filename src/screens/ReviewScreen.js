@@ -48,10 +48,10 @@ export class ReviewScreen {
           <canvas class="timeline" width="1200" height="440" role="img"></canvas>
           <div class="legend"><span><i class="lg-line"></i>Mood</span><span><i class="lg-manic"></i>Manic episode</span><span><i class="lg-dep"></i>Depressive episode</span><span><i class="lg-stable"></i>Stable zone</span></div>
           <div class="stats">
-            <div><b>${s.stableDays}</b><span>days on the stable road</span></div>
-            <div><b>${s.manic + s.depressive}</b><span>episodes (${epText})</span></div>
-            <div><b>${s.support}</b><span>support items used</span></div>
-            <div><b>${s.coins?.collected ?? 0}</b><span>coins collected${s.coins?.dull ? ` (${s.coins.dull} felt like nothing during a depressive episode)` : ''}</span></div>
+            <div><b data-count="${s.stableDays}">${s.stableDays}</b><span>days on the stable road</span></div>
+            <div><b data-count="${s.manic + s.depressive}">${s.manic + s.depressive}</b><span>episodes (${epText})</span></div>
+            <div><b data-count="${s.support}">${s.support}</b><span>support items used</span></div>
+            <div><b data-count="${s.coins?.collected ?? 0}">${s.coins?.collected ?? 0}</b><span>coins collected${s.coins?.dull ? ` (${s.coins.dull} felt like nothing during a depressive episode)` : ''}</span></div>
           </div>
           <p class="reflection">${log ? log.reflection() : ''}</p>
           <h3>What the research says</h3>
@@ -67,6 +67,7 @@ export class ReviewScreen {
       </div>`;
     const $ = (sel) => app.ui.querySelector(sel);
     drawTimeline($('.timeline'), log);
+    countUp(app.ui.querySelectorAll('.stats b'));
     $('.again').addEventListener('click', () => app.show('drive'));
     $('.sources-btn').addEventListener('click', (e) => {
       const list = $('.sources');
@@ -87,6 +88,19 @@ export class ReviewScreen {
     this.items?.update(dt, world.car);
     world.chase.pullBack(dt, world.kart.group.position, world.frame.fwd);
   }
+}
+
+/** The stats count up from 0 as the card appears (skipped if the player asked for reduced motion). */
+function countUp(els, delay = 1500, dur = 900) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  const t0 = performance.now() + delay;
+  els.forEach((el) => { el.textContent = '0'; });
+  const timer = setInterval(() => {
+    const k = Math.max(0, Math.min(1, (performance.now() - t0) / dur));
+    const eased = 1 - (1 - k) ** 3;
+    els.forEach((el) => { el.textContent = Math.round(Number(el.dataset.count) * eased); });
+    if (k >= 1 || !els[0]?.isConnected) clearInterval(timer);
+  }, 30);
 }
 
 /** Line graph of mood across Jan–Dec, with episodes shaded. Drawn from the run log. */

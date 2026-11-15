@@ -6,6 +6,9 @@ import { PhoneLink } from './net.js';
 
 const ARROW = (flip) => `<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M${flip ? '13 7 L31 20 L13 33' : '27 7 L9 20 L27 33'} Z" fill="currentColor" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>`;
 
+const PAUSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="2" width="5" height="16" rx="2"/><rect x="12" y="2" width="5" height="16" rx="2"/></svg>';
+const SOUND_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 7.5h3.2L10.5 3.6v12.8L5.7 12.5H2.5z"/><path d="M13.5 6.6a4.8 4.8 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
 const SCREEN_TEXT = {
   title: { button: 'Start', hint: 'Use ◀ ▶ to choose your driver' },
   note: { button: 'Continue', hint: 'Read the note on the big screen' },
@@ -24,8 +27,8 @@ export function buildPad(root, { send, local = false }) {
       <div class="pad-top">
         <div class="pad-status"><span class="pdot"></span><span class="ptxt">Connecting…</span></div>
         <div class="pad-menu">
-          <button class="pill" data-act="pause">❚❚ Pause</button>
-          <button class="pill" data-act="mute">♪ Sound</button>
+          <button class="pill" data-act="pause">${PAUSE_ICON}Pause</button>
+          <button class="pill" data-act="mute">${SOUND_ICON}Sound</button>
         </div>
         <div class="pad-room"></div>
       </div>
