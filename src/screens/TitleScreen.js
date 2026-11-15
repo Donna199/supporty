@@ -31,7 +31,7 @@ export class TitleScreen {
       <div class="screen title">
         <div class="title-left">
           <div>
-            <h1 class="logo">Supporty</h1>
+            <h1 class="logo" aria-label="Supporty">${[...'Supporty'].map((c) => `<span aria-hidden="true">${c}</span>`).join('')}</h1>
             <div class="subtitle">A Year with Bipolar I</div>
             <div class="tagline">A game about one year with bipolar I disorder.</div>
           </div>
@@ -45,10 +45,11 @@ export class TitleScreen {
         </div>
         <div class="title-right">
           <div class="card qr-card">
-            <canvas class="qr" width="420" height="420" aria-label="QR code for the phone controller"></canvas>
-            <div class="room"></div>
-            <div class="hint">Scan with your phone camera to use it as the controller</div>
-            <div class="network-tip">📶 Make sure your phone and this computer are on the same Wi-Fi network.</div>
+            <div class="qr-tag">Phone controller</div>
+            <p class="qr-lead">Scan with your phone camera to use it as the controller</p>
+            <div class="qr-frame"><canvas class="qr" width="420" height="420" aria-label="QR code for the phone controller"></canvas></div>
+            <div class="room" aria-label="Room code"></div>
+            <div class="network-tip">Make sure your phone and this computer are on the same Wi-Fi network.</div>
             <div class="status"><span class="dot"></span><span class="status-text"></span></div>
             <button class="link local-link">Play on this device instead</button>
           </div>
@@ -98,7 +99,7 @@ export class TitleScreen {
     $('.status-text').textContent = text;
     if (this.qrCode !== app.net.code) {
       this.qrCode = app.net.code;
-      $('.room').textContent = app.net.code;
+      $('.room').innerHTML = [...(app.net.code || '')].map((c) => `<span>${c}</span>`).join(''); // one pastel tile per letter
       drawQR($('.qr'), controllerUrl(app.net.code));
     }
     $('.press-start').textContent = app.net.connected ? 'Press Start on your phone' : 'Press Enter to play with the keyboard';

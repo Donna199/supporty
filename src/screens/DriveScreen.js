@@ -183,7 +183,7 @@ export class DriveScreen {
       <div class="screen dim">
         <div class="card pause-card">
           <h2>${needPhone ? 'Controller disconnected' : 'Paused'}</h2>
-          ${needPhone ? `<p>Scan to reconnect your phone, or keep going with the keyboard.</p><canvas class="qr" width="420" height="420"></canvas><div class="room">${app.net.code}</div>` : ''}
+          ${needPhone ? `<p>Scan to reconnect your phone, or keep going with the keyboard.</p><canvas class="qr" width="420" height="420"></canvas><div class="room">${[...(app.net.code || '')].map((c) => `<span>${c}</span>`).join('')}</div>` : ''}
           <div class="row">
             <button class="btn resume">Resume</button>
             <button class="btn secondary guide">Road guide</button>

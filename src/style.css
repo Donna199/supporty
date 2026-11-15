@@ -85,16 +85,21 @@ html, body {
 /* ---------- Title screen ---------- */
 .title { align-items: stretch; justify-content: space-between; padding: 28px 36px 76px; } /* room for the mute button bottom-left */
 .title-left { display: flex; flex-direction: column; justify-content: space-between; max-width: 520px; }
+/* Title: Titan One (Google Fonts, SIL Open Font License), one pastel colour per letter. */
 .logo {
-  font-weight: 900; font-size: clamp(44px, 6vw, 84px); line-height: 0.95; margin: 0;
+  font-family: 'Titan One', 'Nunito', system-ui, sans-serif; font-weight: 400;
+  font-size: clamp(48px, 6.5vw, 92px); line-height: 0.95; margin: 0;
   color: var(--paper);
   -webkit-text-stroke: 3px var(--ink);
   paint-order: stroke fill;
   text-shadow: 0 6px 0 var(--ink);
   letter-spacing: 0.5px;
 }
+.logo span:nth-child(5n+1) { color: #e3b3f0; } .logo span:nth-child(5n+2) { color: #ffe08a; }
+.logo span:nth-child(5n+3) { color: #a8e6cf; } .logo span:nth-child(5n+4) { color: #f8b4c8; } .logo span:nth-child(5n) { color: #7fd3d8; }
 .subtitle {
-  margin-top: 10px; font-weight: 900; font-size: clamp(20px, 2.2vw, 28px); color: var(--paper);
+  font-family: 'Titan One', 'Nunito', system-ui, sans-serif; letter-spacing: 0.5px;
+  margin-top: 10px; font-weight: 400; font-size: clamp(20px, 2.2vw, 28px); color: var(--paper);
   -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink);
 }
 .tagline {
@@ -114,14 +119,37 @@ html, body {
 .driver-card.on { background: #ffe9a8; transform: translateY(-3px); box-shadow: 0 7px 0 var(--ink); }
 
 .title-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; }
-.qr-card { text-align: center; padding: 18px 20px; max-width: 300px; }
+/* QR card: a soft, rounded "phone controller" card. Tag on top, instruction, framed QR, room code tiles. */
+.qr-card {
+  position: relative; text-align: center; max-width: 290px; padding: 26px 20px 12px;
+  border-radius: 30px; box-shadow: 0 5px 0 var(--ink), 0 14px 30px rgba(59, 52, 51, 0.12);
+}
+.qr-tag {
+  position: absolute; top: -16px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  background: #a8e6cf; border: 3px solid var(--ink); border-radius: 999px; padding: 3px 14px;
+  font-weight: 900; font-size: 15px; box-shadow: 0 3px 0 var(--ink);
+}
+.qr-card .qr-lead { margin: 0 auto 10px; max-width: 250px; font-weight: 800; font-size: 15px; line-height: 1.3; color: var(--ink); }
+.qr-frame {
+  width: fit-content; margin: 0 auto; padding: 10px; background: #fff;
+  border: 3px dashed #f5a3c7; border-radius: 22px;
+}
+.qr-card canvas { display: block; width: 180px !important; height: 180px !important; border-radius: 8px; }
+.room { display: flex; justify-content: center; gap: 7px; margin: 12px 0 8px; }
+.room span {
+  width: 38px; height: 42px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 12px;
+  font-weight: 900; font-size: 24px; box-shadow: 0 3px 0 var(--ink); background: #e8c3f2;
+}
+.room span:nth-child(2) { background: #ffe08a; } .room span:nth-child(3) { background: #a8e6cf; } .room span:nth-child(4) { background: #f8bcd0; }
 .network-tip {
-  margin: 8px auto 2px; padding: 6px 10px; border-radius: 10px; background: #eef5e8;
+  margin: 0 auto 8px; padding: 6px 12px; border-radius: 14px; background: #eef5e8;
   font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--ink-soft);
 }
-.qr-card canvas { display: block; width: 210px !important; height: 210px !important; margin: 0 auto; border-radius: 10px; }
-.room { font-weight: 900; font-size: 34px; letter-spacing: 8px; margin: 8px 0 2px; }
-.status { font-weight: 800; font-size: 16px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.status {
+  font-weight: 800; font-size: 15px; display: inline-flex; gap: 8px; align-items: center; justify-content: center;
+  background: var(--cream); border-radius: 999px; padding: 4px 14px;
+}
+.qr-card .link { display: block; margin: 4px auto 0; font-size: 15px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; background: #e0a43c; border: 2px solid var(--ink); }
 .dot.ok { background: #6cc16a; }
 .dot.bad { background: var(--red); }
