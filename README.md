@@ -4,7 +4,7 @@ Supporty is a kart-style browser game about one year with bipolar I disorder. Yo
 
 ## Play
 
-**Live game:** _link coming after the first deploy_
+**Live game:** https://donna199.github.io/supporty/
 
 Best on a laptop with a phone as controller.
 
