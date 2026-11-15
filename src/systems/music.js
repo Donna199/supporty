@@ -2,9 +2,10 @@
 // A small step sequencer: bass, plucked chord notes, a simple melody and soft percussion in a
 // 4-bar loop. It follows the mood (weights {stable, manic, depressive}):
 // - stable: relaxed and cheerful.
-// - manic: faster and restless, the melody jumps up, jittery extra notes, sometimes a tense one.
-//   It should sound like too much, never simply like fun.
-// - depressive: slow, minor chords, no drums, only a few low melody notes (sound.js also muffles it).
+// - manic: fast, louder and excited: the tune lifts a tone, driving bass, racing notes, claps, the
+//   melody an octave up with jittery extra notes and sometimes a clashing one. Exciting, but too much.
+// - depressive: very slow, low and quiet: minor chords sunk a fourth, a low drone, a rare low
+//   melody note, no drums (sound.js also muffles it).
 import { CONFIG } from '../config.js';
 
 const M = CONFIG.sound.music;
@@ -58,48 +59,55 @@ export class Music {
     const { w } = this;
     const bar = Math.floor(step / 16), s = step % 16;
     const low = w.depressive > 0.5, wild = w.manic > 0.5;
-    const [root, third] = (low ? LOW : BRIGHT)[bar];
+    const [r0, third] = (low ? LOW : BRIGHT)[bar];
+    // Manic: the whole tune lifts a tone. Depressive: it sinks a fourth.
+    const shift = wild ? M.manicShift : low ? M.depressiveShift : 0;
+    const root = r0 + shift;
     const chord = [root, root + third, root + 7];
-    const vol = 1 - 0.3 * w.depressive;
+    const vol = 1 + M.manicBoost * w.manic - M.depressiveCut * w.depressive;
 
-    // Bass: the chord's root on beats 1 and 3 (plus an octave hop when manic).
-    if (s % 8 === 0) this._note(hz(root - 12), t, len * 7, { type: 'triangle', gain: 0.1 * vol });
-    if (wild && s % 8 === 6) this._note(hz(root), t, len * 1.5, { type: 'triangle', gain: 0.07 });
-
-    // Plucked chord notes: every 8th note, or slow and sparse when low.
-    if (low ? s % 4 === 0 : s % 2 === 0) {
-      const i = [0, 1, 2, 1][(low ? s / 4 : s / 2) % 4];
-      this._note(hz(chord[i] + 12), t, len * (low ? 5 : 1.8), { type: 'sine', gain: 0.045 * vol });
+    // ----- Depressive episode: very little happens. A low drone, a slow pluck, a rare low melody note. No drums.
+    if (low) {
+      if (s === 0) this._note(hz(root - 24), t, len * 15, { type: 'sine', gain: 0.09 * vol, attack: 0.4 });
+      if (s % 8 === 0) this._note(hz(chord[[0, 1][(s / 8) % 2]]), t, len * 7, { type: 'sine', gain: 0.05 * vol, attack: 0.05 });
+      const n = TUNE[bar][0];
+      if (s === 0 && bar % 2 === 0 && n !== null) this._note(hz(n - 24 + shift), t, len * 12, { type: 'sine', gain: 0.04 * vol, attack: 0.08 });
+      return;
     }
 
-    // Melody.
+    // ----- Bass: the chord's root on beats 1 and 3. Manic: a driving bass on every 8th note.
+    if (wild) { if (s % 2 === 0) this._note(hz(root - 12 + (s % 4 === 2 ? 12 : 0)), t, len * 1.6, { type: 'triangle', gain: 0.085 * vol }); }
+    else if (s % 8 === 0) this._note(hz(root - 12), t, len * 7, { type: 'triangle', gain: 0.1 * vol });
+
+    // ----- Plucked chord notes: every 8th note. Manic: racing 16th notes that climb and fall over two octaves.
+    if (wild) this._note(hz(chord[s % 3] + 12 + (s % 8 >= 4 ? 12 : 0)), t, len * 1.1, { type: 'sine', gain: 0.04 * vol });
+    else if (s % 2 === 0) this._note(hz(chord[[0, 1, 2, 1][(s / 2) % 4]] + 12), t, len * 1.8, { type: 'sine', gain: 0.045 * vol });
+
+    // ----- Melody. Manic: an octave up and brighter, with jittery in-between notes, now and then one that clashes.
     if (s % 2 === 0) {
       const n = TUNE[bar][s / 2];
-      if (n !== null) {
-        if (low) { if (s === 0 || s === 8) this._note(hz(n - 15), t, len * 6, { type: 'sine', gain: 0.045 }); }
-        else this._note(hz(n + (wild ? 12 : 0)), t, len * 1.7, { type: 'square', gain: wild ? 0.028 : 0.034, filter: wild ? 3200 : 2200 });
-      }
-    } else if (wild && Math.random() < 0.75) {
-      // Manic: jittery in-between notes, now and then one that clashes (a raised 4th).
+      if (n !== null) this._note(hz(n + shift + (wild ? 12 : 0)), t, len * 1.7, { type: 'square', gain: (wild ? 0.03 : 0.034) * vol, filter: wild ? 3600 : 2200 });
+    } else if (wild && Math.random() < 0.8) {
       const n = Math.random() < 0.2 ? root + 30 : chord[Math.floor(Math.random() * 3)] + 24;
-      this._note(hz(n), t, len * 0.9, { type: 'square', gain: 0.018, filter: 3400 });
+      this._note(hz(n), t, len * 0.9, { type: 'square', gain: 0.02 * vol, filter: 3800 });
     }
 
-    // Percussion: soft kick on the beat, light tick off the beat. None in a depressive episode.
-    if (!low) {
-      if (s % 4 === 0) this._note(110, t, 0.13, { type: 'sine', gain: 0.11 * (1 - w.depressive), glide: 45 });
-      if (s % 4 === 2 || (wild && s % 2 === 1)) this._tick(t, wild ? 0.02 : 0.016);
-    }
+    // ----- Percussion: soft kick on the beat, light tick off the beat.
+    // Manic: kick with extra pushes, a clap on beats 2 and 4, ticks on every 16th.
+    const drums = 1 - w.depressive;
+    if (s % 4 === 0 || (wild && (s === 6 || s === 14))) this._note(110, t, 0.13, { type: 'sine', gain: 0.11 * vol * drums, glide: 45 });
+    if (wild && s % 8 === 4) this._tick(t, 0.05 * vol, 1800, 0.09);
+    if (wild || s % 4 === 2) this._tick(t, (wild ? 0.02 : 0.016) * drums);
   }
 
-  _note(freq, t, dur, { type = 'sine', gain = 0.05, filter, glide } = {}) {
+  _note(freq, t, dur, { type = 'sine', gain = 0.05, filter, glide, attack = 0.012 } = {}) {
     const c = this.ctx;
     const o = c.createOscillator(), g = c.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, t);
     if (glide) o.frequency.exponentialRampToValueAtTime(glide, t + dur);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(gain, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     let node = o.connect(g);
     if (filter) {
@@ -113,16 +121,17 @@ export class Music {
     o.stop(t + dur + 0.02);
   }
 
-  _tick(t, gain) {
+  /** A short noise hit: a light tick by default, or a clap with a lower `freq` and longer `dur`. */
+  _tick(t, gain, freq = 6000, dur = 0.04) {
     const c = this.ctx;
     const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     n.buffer = this.noise;
     f.type = 'highpass';
-    f.frequency.value = 6000;
+    f.frequency.value = freq;
     g.gain.setValueAtTime(gain, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     n.connect(f).connect(g).connect(this.out);
     n.start(t, Math.random());
-    n.stop(t + 0.05);
+    n.stop(t + dur + 0.01);
   }
 }

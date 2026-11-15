@@ -129,7 +129,11 @@ export const CONFIG = {
     master: 0.5,          // overall volume
     sfx: 0.8,             // one-shot effects
     // Background music (systems/music.js): quiet, and its speed follows the mood.
-    music: { volume: 0.6, bpm: { stable: 108, manic: 152, depressive: 70 } },
+    music: {
+      volume: 0.6, bpm: { stable: 108, manic: 176, depressive: 52 },
+      manicShift: 2, manicBoost: 0.3,          // manic: tune up 2 semitones, 30% louder
+      depressiveShift: -5, depressiveCut: 0.45, // depressive: tune down 5 semitones, 45% quieter
+    },
     maxVoices: 4,         // never more than 4 one-shots at once
     crossfadeSec: 2,      // how quickly the muffle eases in when the phase changes
     muffleHz: 900,        // low-pass on everything in a depressive episode
