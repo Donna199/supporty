@@ -11,7 +11,7 @@ body.phone *, body.phone *::before, body.phone *::after, .pad, .pad * { box-sizi
 html:has(body.phone) { touch-action: none; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
 body.phone {
   margin: 0; height: 100dvh; overflow: hidden; position: fixed; inset: 0;
-  font-family: 'Nunito', system-ui, sans-serif; color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif; color: var(--ink);
   background: var(--cream);
   -webkit-user-select: none; user-select: none;
   -webkit-touch-callout: none; touch-action: none;

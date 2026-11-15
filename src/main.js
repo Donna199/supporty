@@ -177,7 +177,7 @@ resize();
 // ?debug=1 shows fps and triangle count (budget: under 50k).
 const debugEl = new URLSearchParams(location.search).has('debug') ? document.createElement('pre') : null;
 if (debugEl) {
-  debugEl.style.cssText = 'position:fixed;left:8px;bottom:8px;margin:0;background:#fffaf0;padding:4px 8px;border:2px solid #3b3433;border-radius:8px;font:700 13px Nunito;z-index:9';
+  debugEl.style.cssText = 'position:fixed;left:8px;bottom:8px;margin:0;background:#fffaf0;padding:4px 8px;border:2px solid #3b3433;border-radius:8px;font:700 13px Inter;z-index:9';
   document.body.appendChild(debugEl);
 }
 let frames = 0, fpsTime = 0;

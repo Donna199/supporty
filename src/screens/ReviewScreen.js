@@ -96,7 +96,7 @@ function drawTimeline(cv, log) {
   const total = CONFIG.secondsPerMonth * 12;
   const x = (t) => L + (Math.min(t, total) / total) * (W - L - R);
   const y = (m) => T + ((100 - m) / 200) * (H - T - B);
-  g.font = '800 26px Nunito, system-ui, sans-serif';
+  g.font = '800 26px Inter, system-ui, sans-serif';
   g.fillStyle = '#fffaf0'; g.fillRect(0, 0, W, H);
   // stable zone band
   g.fillStyle = '#e1efd9';

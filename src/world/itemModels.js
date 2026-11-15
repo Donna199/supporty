@@ -21,7 +21,7 @@ function roundRect(g, x, y, w, h, r) {
 export function label(text, { bg = '#fffaf0', fg = INK, height = 0.95 } = {}) {
   const cv = document.createElement('canvas');
   const g = cv.getContext('2d');
-  const font = '900 46px Nunito, system-ui, sans-serif';
+  const font = '900 46px Inter, system-ui, sans-serif';
   g.font = font;
   const w = Math.ceil(g.measureText(text).width) + 52;
   cv.width = w; cv.height = 76;
@@ -52,7 +52,7 @@ export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, roun
     g.fillStyle = bg; g.fill();
     g.lineWidth = 12; g.strokeStyle = INK; g.stroke();
     g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = `900 ${px}px Nunito, system-ui, sans-serif`;
+    g.font = `900 ${px}px Inter, system-ui, sans-serif`;
     const words = t.split(' '); const lines = []; let line = '';
     for (const word of words) {
       const test = line ? `${line} ${word}` : word;
