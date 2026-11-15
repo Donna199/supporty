@@ -459,16 +459,12 @@ function spanArch(text, bg, badge = null) {
   // A tall banner whose words fill it (drawn at 2048 px wide, so they stay sharp; not faded by fog, so it reads in every phase).
   const sign = new THREE.Group(); // backing board + words, anchored at the banner's bottom edge
   sign.position.y = 4.1;
-  sign.add(box(x * 2 - 2.4, 1.6, 0.14, 0x3b3433, 0, 1.3, 0.05)); // slim back board, hidden behind the sign face
-  const p = textPanel(text, { w: x * 2 + 0.4, h: 2.4, bg, res: 2048, fog: false, fit: true, badge, stroke: 8, radius: 52 });
+  sign.add(box(x * 2 + 0.2, 2.2, 0.14, 0x3b3433, 0, 1.3, 0.05)); // back board, just inside the sign face
+  const p = textPanel(text, { w: x * 2 + 0.4, h: 2.4, bg, res: 2048, fog: false, fit: true, badge, stroke: 8, radius: 6 }); // a plain rectangular banner
   p.position.set(0, 1.3, -0.06); p.rotation.y = Math.PI;
   sign.add(p);
   g.add(sign);
-  // Far away the sign is drawn larger, so its words stay a readable size on screen; it settles to
-  // its real size on the arch as the kart arrives. `d` = metres ahead of the kart.
-  const B = CONFIG.banner;
-  g.userData.approach = (d) => sign.scale.setScalar(Math.max(1, Math.min(B.maxScale, (d + B.cameraBack) / B.fullSizeAt)));
-  return g;
+  return g; // the sign stays one fixed size on its posts
 }
 // Banner badge: which way the event pushes mood. Colours match the mood meter's HIGH (pink) and LOW (blue) zones.
 const UP = { dir: 'up', color: '#f8cfe6' }, DOWN = { dir: 'down', color: '#c9d6e2' }, BOTH = { dir: 'both', color: '#ffe9a8' };
@@ -542,7 +538,6 @@ export function buildItem(id, { span = false } = {}) {
   if (icon.userData.label) icon.remove(icon.userData.label); // the arch carries the words
   g.add(icon);
   g.userData.spin = icon.userData.spin;
-  const grow = g.userData.approach;
-  g.userData.approach = (d) => { grow(d); icon.userData.approach?.(d); };
+  g.userData.approach = icon.userData.approach;
   return g;
 }

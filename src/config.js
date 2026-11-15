@@ -139,9 +139,6 @@ export const CONFIG = {
     muffleHz: 900,        // low-pass on everything in a depressive episode
   },
 
-  // Life-event banners across the road: drawn larger while far away so the words can be read early.
-  banner: { fullSizeAt: 28, cameraBack: 10, maxScale: 5 }, // real size within ~18 m; up to 5x at a distance
-
   pullWindow: [-28, 6],   // you can pull in from 28 m before a stop until 6 m after it
   captionSec: 3,          // PRD: story caption shown for 3 seconds
 
