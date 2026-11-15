@@ -39,10 +39,18 @@ export function label(text, { bg = '#fffaf0', fg = INK, height = 0.95 } = {}) {
   return sp;
 }
 
-/** Flat sign face with wrapped text. Returns the mesh; mesh.userData.setText(text) redraws it. */
-export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, round = false, px = 64, res = 512, fog = true, fit = false, badge = null, stroke = 12, radius = 28 } = {}) {
+/** Flat sign face with wrapped text. Returns the mesh; mesh.userData.setText(text) redraws it.
+ *  `hug`: the sign is one line and exactly as wide as its words need (height `h` stays); read the width from mesh.userData.w.
+ *  Otherwise the text shrinks if it would not fit, so words are never cut off. */
+export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, round = false, px = 64, res = 512, fog = true, fit = false, badge = null, stroke = 12, radius = 28, hug = false } = {}) {
   const cv = document.createElement('canvas');
-  const k = res / 512; // wide banners use a larger canvas so their words stay sharp
+  if (hug) { // size the sign to the words: one line plus padding
+    const m = cv.getContext('2d');
+    m.font = `900 ${px}px Inter, system-ui, sans-serif`;
+    res = Math.ceil(m.measureText(text).width + px * 1.3);
+    w = (h * res) / Math.round(px * 1.75);
+  }
+  const k = hug ? 1 : res / 512; // wide banners use a larger canvas so their words stay sharp
   cv.width = res; cv.height = Math.round((res * h) / w);
   const g = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv);
@@ -79,12 +87,20 @@ export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, roun
       }
       g.font = `900 ${size}px Inter, system-ui, sans-serif`;
     } else {
-      g.font = `900 ${size}px Inter, system-ui, sans-serif`;
-      for (const word of words) {
-        const test = line ? `${line} ${word}` : word;
-        if (g.measureText(test).width > cv.width - 70 * k && line) { lines.push(line); line = word; } else line = test;
+      // Wrap the words; if the lines are taller or wider than the sign, shrink the text until they fit.
+      for (;;) {
+        g.font = `900 ${size}px Inter, system-ui, sans-serif`;
+        lines = []; line = '';
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+          if (g.measureText(test).width > cv.width - 70 * k && line) { lines.push(line); line = word; } else line = test;
+        }
+        lines.push(line);
+        const widest = Math.max(...lines.map((l) => g.measureText(l).width));
+        const max = round ? cv.width * 0.74 : cv.width - 50 * k;
+        if (size <= 18 || (lines.length * size * 1.1 <= cv.height - 26 * k && widest <= max)) break;
+        size = Math.floor(size * 0.93);
       }
-      lines.push(line);
     }
     const lh = size * 1.1;
     lines.forEach((l, i) => g.fillText(l, badge ? midX : cv.width / 2, cv.height / 2 + (i - (lines.length - 1) / 2) * lh + 4 * k));
@@ -95,6 +111,7 @@ export function textPanel(text, { w = 3, h = 1.5, bg = '#fffaf0', fg = INK, roun
   tex.anisotropy = 8; // stays crisp when seen from far away or at an angle
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, fog }));
   mesh.userData.setText = draw;
+  mesh.userData.w = w;
   return mesh;
 }
 
@@ -116,11 +133,12 @@ function arrow(g, cx, cy, s, dir) {
 // ---------- Small shared pieces ----------
 function post(h, color, x, z = 0) { return cyl(0.09, 0.09, h, color, x, h / 2, z, 6); }
 /** Sign board on two posts, facing the kart (-Z). */
-function board(text, { w = 2.8, h = 1.4, y = 2.2, bg, fg, px } = {}) {
+function board(text, { w = 2.8, h = 1.4, y = 2.2, bg, fg, px, hug = false } = {}) {
   const g = new THREE.Group();
+  const p = textPanel(text, { w, h, bg, fg, px, hug });
+  w = p.userData.w; // with `hug`, the board is as wide as its words
   g.add(post(y + h / 2, 0x8d8a86, -w / 2 + 0.25), post(y + h / 2, 0x8d8a86, w / 2 - 0.25));
   g.add(box(w + 0.15, h + 0.15, 0.12, 0x3b3433, 0, y, 0.02));
-  const p = textPanel(text, { w, h, bg, fg, px });
   p.position.set(0, y, -0.06);
   p.rotation.y = Math.PI;
   g.add(p);
@@ -334,7 +352,7 @@ function restStop() {
   g.add(bed);
   g.add(blobShadow(5, 3.4));
   g.userData.face = face;
-  return withLabel(g, CONFIG.supportLabels.restStop, 4.7, { bg: '#cfe7c4' });
+  return g; // its own sign already names it, so no floating name tag
 }
 
 function booth(color, awningA, awningB) {
@@ -357,7 +375,7 @@ function therapyPit() {
   g.add(sign);
   // icon: two speech bubbles (talking it through)
   g.add(ball(0.42, 0xfffaf0, -0.4, 4.0, -0.6, 8), ball(0.32, 0xbfe3f2, 0.35, 4.25, -0.6, 8));
-  return withLabel(g, CONFIG.supportLabels.therapyPit, 5.2, { bg: '#cfe7c4' });
+  return g; // its own sign already names it, so no floating name tag
 }
 
 function person(shirt, hair, x) {
@@ -376,12 +394,13 @@ function familyPit() {
   const g = new THREE.Group();
   const crew = [person(0xf2a65a, 0x6b4a32, -1.3), person(0x7bb8c9, 0x2e2b2b, 0), person(0xc68fd0, 0xe2c65a, 1.3)];
   crew.forEach((p) => g.add(p)); // faces are on -Z, toward the kart
-  const banner = textPanel('Family & friends', { w: 3.6, h: 0.8, bg: '#ffe9a8', px: 88 });
+  const banner = textPanel('Family & friends', { h: 0.68, bg: '#ffe9a8', px: 88, hug: true }); // as wide as its words
   banner.position.set(0, 2.85, -0.1); banner.rotation.y = Math.PI;
-  g.add(banner, post(3.2, 0x8a6a4f, -1.9), post(3.2, 0x8a6a4f, 1.9));
+  const half = banner.userData.w / 2 + 0.05;
+  g.add(banner, post(3.2, 0x8a6a4f, -half), post(3.2, 0x8a6a4f, half));
   g.add(blobShadow(4.6, 1.8));
   g.userData.spin = (t) => crew.forEach((p, i) => { p.userData.arm.rotation.z = 0.6 + Math.sin(t * 6 + i) * 0.5; });
-  return withLabel(g, CONFIG.supportLabels.familyPit, 3.9, { bg: '#cfe7c4' });
+  return g; // its own sign already names it, so no floating name tag
 }
 
 // ---------- Episode hazards ----------
@@ -390,7 +409,7 @@ function cliffRamp() {
   const ramp = box(2.4, 0.2, 3.2, 0xe6a04a, 0, 0.55, 0);
   ramp.rotation.x = 0.32;
   g.add(ramp, box(2.4, 1.1, 0.2, 0xb87b33, 0, 0.55, 1.5));
-  const arrow = board('Shortcut! →', { w: 2.2, h: 0.8, y: 2.4, bg: '#ffe066', px: 96 });
+  const arrow = board('Shortcut! →', { h: 0.7, y: 2.4, bg: '#ffe066', px: 96, hug: true });
   g.add(arrow);
   g.add(blobShadow(3, 3.6));
   return withLabel(g, 'Risky shortcut', 3.6, { bg: '#f8cfe6' });
