@@ -7,6 +7,7 @@
   --ink: #3b3433;
   --ink-soft: #6d6460;
   --sage: #7fae7a;
+  --btn-green: #467f4d; /* white text on this is 4.8:1 (the lighter sage was 2.6:1) */
   --sky: #bfe3f2;
   --red: #d23b3b;
   --manic: #d9479c;
@@ -60,10 +61,12 @@ html, body {
 .card h2 { margin: 0 0 10px; font-weight: 900; font-size: 30px; }
 .card p { font-size: 19px; line-height: 1.5; margin: 0 0 14px; }
 .hint { color: var(--ink-soft); font-size: 16px; }
+/* On the title screen this hint sits straight on the 3D road, so it gets a cream pill behind it. */
+.title-left .hint { display: inline-block; margin: 10px 0 0; padding: 4px 12px; background: var(--paper); border-radius: 999px; color: var(--ink); font-weight: 700; }
 
 .btn {
   font: inherit; font-weight: 800; font-size: 19px;
-  background: var(--sage); color: #fff;
+  background: var(--btn-green); color: #fff;
   border: 3px solid var(--ink); border-radius: 999px;
   padding: 10px 26px; cursor: pointer;
   box-shadow: 0 4px 0 var(--ink);
@@ -86,21 +89,42 @@ html, body {
 .title { align-items: stretch; justify-content: space-between; padding: 28px 36px 76px; } /* room for the mute button bottom-left */
 .title-left { display: flex; flex-direction: column; justify-content: space-between; max-width: 520px; }
 /* Title: Gluten, heaviest weight, one pastel colour per letter. All other text is Inter. (Both Google Fonts, SIL Open Font License.) */
+/* Glossy "jelly" sticker title: one sky-blue gradient with a white shine on each letter, a blue outline,
+   a thick white sticker border and a light-blue edge. Every layer holds the same letters in the same places. */
 .logo {
+  --blue: #3d8fdc; --deep: #2f74c0; --edge: #b9e2fb;
+  position: relative; display: inline-block; margin: 0.1em 0 0 22px; padding: 0.12em 0.1em;
   font-family: 'Gluten', 'Inter', system-ui, sans-serif; font-weight: 900;
-  font-size: clamp(48px, 6.5vw, 92px); line-height: 0.95; margin: 0;
-  color: var(--paper);
-  -webkit-text-stroke: 3px var(--ink);
-  paint-order: stroke fill;
-  text-shadow: 0 6px 0 var(--ink);
-  letter-spacing: 0.5px;
+  font-size: clamp(48px, 6.5vw, 92px); line-height: 1; letter-spacing: 0.02em;
+  paint-order: stroke fill; -webkit-text-stroke-linejoin: round; stroke-linejoin: round;
 }
-.logo span:nth-child(5n+1) { color: #e3b3f0; } .logo span:nth-child(5n+2) { color: #ffe08a; }
-.logo span:nth-child(5n+3) { color: #a8e6cf; } .logo span:nth-child(5n+4) { color: #f8b4c8; } .logo span:nth-child(5n) { color: #7fd3d8; }
+.logo-layer { display: block; white-space: nowrap; }
+.logo-layer:not(.face) { position: absolute; inset: 0.12em 0.1em; }
+.logo-layer span { display: inline-block; }
+.logo-layer span:nth-child(even) { transform: translateY(-0.04em); } /* a gentle bounce */
+.logo .outer { color: var(--edge); -webkit-text-stroke: 0.6em var(--edge); }
+.logo .edge { color: #fff; -webkit-text-stroke: 0.44em #fff; }
+.logo .line { color: var(--blue); -webkit-text-stroke: 0.12em var(--blue); }
+.logo .depth { color: var(--deep); -webkit-text-stroke: 0.06em var(--deep); transform: translateY(0.05em); }
+.logo .face { position: relative; }
+.logo .face span {
+  color: transparent; -webkit-background-clip: text; background-clip: text;
+  background:
+    radial-gradient(ellipse 30% 16% at 34% 24%, rgba(255, 255, 255, 0.95) 0 55%, transparent 75%),
+    linear-gradient(180deg, #e3f4ff 0%, #a9dcff 38%, #6bb8f5 72%, #4a9ce6 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+.logo-ticks { position: absolute; left: -0.05em; top: -0.32em; width: 0.5em; height: 0.3em; transform: rotate(-12deg); }
+.logo-ticks path { fill: none; stroke: var(--blue); stroke-width: 5; stroke-linecap: round; }
+.logo-star { position: absolute; fill: #fff; stroke: var(--edge); stroke-width: 1.2; }
+.logo-star.s1 { right: -0.42em; top: -0.12em; width: 0.32em; height: 0.32em; }
+.logo-star.s2 { right: -0.62em; top: 0.3em; width: 0.2em; height: 0.2em; }
+.logo-star.s3 { left: 1.6em; top: -0.34em; width: 0.18em; height: 0.18em; }
 .subtitle {
-  letter-spacing: 0.2px;
-  margin-top: 10px; font-weight: 900; font-size: clamp(20px, 2.2vw, 28px); color: var(--paper);
-  -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink);
+  display: inline-block; margin: 14px 0 0 26px; padding: 6px 18px;
+  background: #fff; color: #2a6fb8; border: 3px solid #2a6fb8; border-radius: 999px; /* 5.2:1 on white */
+  box-shadow: 0 0 0 5px #b9e2fb;
+  font-weight: 900; font-size: clamp(16px, 1.7vw, 21px); letter-spacing: 0.2px;
 }
 .tagline {
   display: inline-block; margin-top: 14px; max-width: 270px; /* wraps to two lines so it stays clear of the kart */
@@ -446,3 +470,8 @@ body:has(.local-pad) .skip-practice { bottom: auto; top: 130px; }
 .mini-scene.depressive b { width: 2px; height: 18px; transform: rotate(8deg); }
 .mini-scene.depressive b:nth-child(1) { top: 8px; left: 30%; } .mini-scene.depressive b:nth-child(2) { top: 70px; left: 20%; }
 .mini-scene.depressive b:nth-child(3) { top: 20px; right: 22%; } .mini-scene.depressive b:nth-child(4) { top: 76px; right: 30%; }
+
+/* ---------- Reduced motion: every looping or decorative animation stops when the player asks for less motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}

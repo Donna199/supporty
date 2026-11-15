@@ -3,6 +3,14 @@
 // "Play on this device" link. Start on the phone (or Enter) begins.
 import { controllerUrl, drawQR } from '../net.js';
 
+// Glossy "jelly" sticker title: the word is drawn 5 times on top of itself (light-blue edge, white
+// sticker border, blue outline, a deeper-blue base, then the gradient letters with a white shine).
+const STAR = (cls) => `<svg class="logo-star ${cls}" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 0 C11 7 13 9 20 10 C13 11 11 13 10 20 C9 13 7 11 0 10 C7 9 9 7 10 0 Z" /></svg>`;
+const TICKS = '<svg class="logo-ticks" viewBox="0 0 44 26" aria-hidden="true"><path d="M8 22 L4 6 M22 22 L22 4 M36 22 L40 6" /></svg>';
+const LOGO = ['outer', 'edge', 'line', 'depth', 'face']
+  .map((layer) => `<span class="logo-layer ${layer}" aria-hidden="true">${[...'Supporty'].map((c) => `<span>${c}</span>`).join('')}</span>`)
+  .join('') + TICKS + STAR('s1') + STAR('s2') + STAR('s3');
+
 const STATUS = {
   opening: ['', 'Opening a room…'],
   waiting: ['', 'Waiting for your phone'],
@@ -31,7 +39,7 @@ export class TitleScreen {
       <div class="screen title">
         <div class="title-left">
           <div>
-            <h1 class="logo" aria-label="Supporty">${[...'Supporty'].map((c) => `<span aria-hidden="true">${c}</span>`).join('')}</h1>
+            <h1 class="logo" aria-label="Supporty">${LOGO}</h1>
             <div class="subtitle">A Year with Bipolar I</div>
             <div class="tagline">A game about one year with bipolar I disorder.</div>
           </div>
