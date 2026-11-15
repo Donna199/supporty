@@ -1,0 +1,17 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Secrets and local settings
+.env*
+
+# macOS
+.DS_Store
+
+# Review renders and test output
+review/
+cdp-profile*/
+*.log
+
+# Local model checks (not part of the game)
+tests/
