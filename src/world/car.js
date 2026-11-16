@@ -4,14 +4,14 @@
 import * as THREE from 'three';
 import { WORLD as W, CAR } from './palette.js';
 import { SEAT, WHEEL, SCREEN as SC, PLATE } from './dims.js';
-import { GEO, withAccent } from './generated.js';
+import { bakedModel } from './generated.js';
 import { buildDriver } from './driver.js';
-import { toon, vertexToon, star, blobShadow, outline, glow } from './models.js';
+import { toon, star, blobShadow, glow } from './models.js';
 
 const LEAN = { car: 0.09, driver: 0.05 };       // radians at full lean
 const BOUNCE = { height: 0.035, perMetre: 1.1 }; // gentle bounce while driving
 const OUTLINE = 0.022;                           // thickness of the soft outline
-const HEADLIGHTS = { x: 0.58, y: 0.76, z: 1.78, size: 0.9, opacity: 0.3 };
+const HEADLIGHTS = { x: 0.58, y: 0.76, z: 1.78, size: 0.55, opacity: 0.28 }; // small: only the light's core glows
 
 let glassGeo;
 function windshield() {
@@ -32,7 +32,7 @@ export function buildKart(driverName) {
   const tilt = new THREE.Group(); // body roll + bounce
   group.add(tilt);
 
-  tilt.add(new THREE.Mesh(withAccent('kart', accent), vertexToon()), windshield());
+  tilt.add(bakedModel('kart', { accent, outline: OUTLINE }), windshield());
   const plateStar = new THREE.Mesh(star(), toon(accent));
   plateStar.position.set(0, PLATE.y, PLATE.z);
   plateStar.rotation.y = Math.PI;
@@ -45,20 +45,19 @@ export function buildKart(driverName) {
     const holder = new THREE.Group();
     holder.position.set(side * WHEEL.x, WHEEL.r, z);
     if (side < 0) holder.rotation.y = Math.PI;
-    const w = new THREE.Mesh(GEO.wheel, vertexToon());
+    const w = bakedModel('wheel', { outline: OUTLINE });
     w.userData.dir = side;
     holder.add(w);
     tilt.add(holder);
     wheels.push(w);
   }
 
-  const driver = buildDriver(driverName);
+  const driver = buildDriver(driverName, OUTLINE);
   driver.body.position.set(...SEAT);
   driver.setMood('stable');
   tilt.add(driver.body);
-  // Soft glow on the headlights (real lights only), a thin outline on everything solid, and the contact shadow.
+  // Soft glow on the headlights (real lights only) and the contact shadow.
   for (const side of [-1, 1]) { const g = glow(CAR.lamp, HEADLIGHTS.size, HEADLIGHTS.opacity); g.position.set(side * HEADLIGHTS.x, HEADLIGHTS.y, HEADLIGHTS.z); tilt.add(g); }
-  outline(tilt, OUTLINE);
   group.add(blobShadow(3.0, 4.7), blobShadow(2.2, 3.6));
 
   let rolled = 0;

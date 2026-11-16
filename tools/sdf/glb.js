@@ -1,38 +1,39 @@
-// glb.js: writes one mesh as a binary glTF file (.glb): positions, normals, vertex colours,
-// an "_ACCENT" value per vertex (parts the game recolours per driver) and the triangle list.
+// glb.js: writes a mesh as a binary glTF file (.glb): one shared set of positions and normals,
+// and one sub-mesh per colour (its own triangle list and a plain material that carries the colour).
+// The colour the game fills in per driver is a material named "accent".
 import { writeFileSync } from 'node:fs';
 
+const linear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+
 export function writeGlb(path, mesh, name) {
-  const count = mesh.position.length / 3;
-  const index = count > 65535 ? new Uint32Array(mesh.index) : new Uint16Array(mesh.index);
-  const arrays = [
-    { data: new Float32Array(mesh.position), type: 'VEC3', comp: 5126, target: 34962, bounds: true },
-    { data: new Float32Array(mesh.normal), type: 'VEC3', comp: 5126, target: 34962 },
-    { data: new Float32Array(mesh.color), type: 'VEC3', comp: 5126, target: 34962 },
-    { data: new Float32Array(mesh.accent), type: 'SCALAR', comp: 5126, target: 34962 },
-    { data: index, type: 'SCALAR', comp: count > 65535 ? 5125 : 5123, target: 34963 },
-  ];
+  const count = mesh.position.length / 3, wide = count > 65535;
+  const pos = new Float32Array(mesh.position);
+  const views = [{ data: pos, type: 'VEC3', comp: 5126, target: 34962, bounds: true }, { data: new Float32Array(mesh.normal), type: 'VEC3', comp: 5126, target: 34962 }];
+  for (const g of mesh.groups) views.push({ data: wide ? new Uint32Array(g.index) : new Uint16Array(g.index), type: 'SCALAR', comp: wide ? 5125 : 5123, target: 34963 });
   const bufferViews = [], accessors = [], chunks = [];
   let offset = 0;
-  for (const a of arrays) {
-    const bytes = Buffer.from(a.data.buffer, a.data.byteOffset, a.data.byteLength);
-    const pad = (4 - (bytes.length % 4)) % 4;
+  for (const a of views) {
+    const bytes = Buffer.from(a.data.buffer, a.data.byteOffset, a.data.byteLength), pad = (4 - (bytes.length % 4)) % 4;
     bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: bytes.length, target: a.target });
     const acc = { bufferView: bufferViews.length - 1, componentType: a.comp, count: a.type === 'VEC3' ? a.data.length / 3 : a.data.length, type: a.type };
     if (a.bounds) {
-      acc.min = [0, 1, 2].map((k) => Math.min(...Array.from({ length: count }, (_, i) => a.data[i * 3 + k])));
-      acc.max = [0, 1, 2].map((k) => Math.max(...Array.from({ length: count }, (_, i) => a.data[i * 3 + k])));
+      acc.min = [Infinity, Infinity, Infinity]; acc.max = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < pos.length; i++) { acc.min[i % 3] = Math.min(acc.min[i % 3], pos[i]); acc.max[i % 3] = Math.max(acc.max[i % 3], pos[i]); }
     }
     accessors.push(acc);
     chunks.push(bytes, Buffer.alloc(pad));
     offset += bytes.length + pad;
   }
   const bin = Buffer.concat(chunks);
+  const materials = mesh.groups.map(({ color }) => (color.accent
+    ? { name: 'accent', extras: { accent: true }, pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1], metallicFactor: 0 } }
+    : { name: '#' + color.toString(16).padStart(6, '0'), extras: { hex: color },
+        pbrMetallicRoughness: { baseColorFactor: [...[16, 8, 0].map((sh) => linear(((color >> sh) & 255) / 255)), 1], metallicFactor: 0 } }));
   const json = {
     asset: { version: '2.0', generator: 'Supporty tools/sdf' },
     scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0, name }],
-    meshes: [{ name, primitives: [{ attributes: { POSITION: 0, NORMAL: 1, COLOR_0: 2, _ACCENT: 3 }, indices: 4 }] }],
-    buffers: [{ byteLength: bin.length }], bufferViews, accessors,
+    meshes: [{ name, primitives: mesh.groups.map((g, i) => ({ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2 + i, material: i })) }],
+    materials, buffers: [{ byteLength: bin.length }], bufferViews, accessors,
   };
   let text = Buffer.from(JSON.stringify(json));
   text = Buffer.concat([text, Buffer.alloc((4 - (text.length % 4)) % 4, 0x20)]);

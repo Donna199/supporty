@@ -250,7 +250,9 @@ export function createWeather(scene, camera) {
       // Same hues, more or less saturated: the numbers are the palette's phase settings.
       const sat = w.stable + w.manic * PHASES.manic.sat + w.depressive * PHASES.depressive.sat;
       const bright = 1 + w.manic * PHASES.manic.light - w.depressive * 0.04;
-      canvas.style.filter = `saturate(${sat.toFixed(3)}) brightness(${bright.toFixed(3)})`;
+      // No filter at all on stable days, so nothing can soften the picture; the phase looks only shift colour (never blur).
+      const plain = Math.abs(sat - 1) < 0.004 && Math.abs(bright - 1) < 0.004;
+      canvas.style.filter = plain ? 'none' : `saturate(${sat.toFixed(3)}) brightness(${bright.toFixed(3)})`;
       fx.dataset.phase = episode;
       fx.classList.toggle('calm', reduceMotion);
     },

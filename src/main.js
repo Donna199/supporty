@@ -9,6 +9,7 @@ import { createWeather } from './world/weather.js';
 import { buildKart } from './world/car.js';
 import { OUTLINE_LAYER } from './world/models.js';
 import { cssVars } from './world/palette.js';
+import { setModelQuality } from './world/generated.js';
 
 for (const [name, value] of cssVars()) document.documentElement.style.setProperty(name, value); // interface colours come from palette.js
 import { HostLink } from './net.js';
@@ -89,6 +90,8 @@ const app = {
     const high = app.graphics === 'high';
     if (high) camera.layers.enable(OUTLINE_LAYER); else camera.layers.disable(OUTLINE_LAYER);
     weather.setQuality(high);
+    setModelQuality(app.graphics);
+    if (world.kart) world.setDriver(app.driver); // rebuild the kart and driver from the fine or the coarse meshes
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, high ? 2 : 1));
     try { sessionStorage.setItem('supporty-graphics', app.graphics); } catch { /* private mode */ }
   },

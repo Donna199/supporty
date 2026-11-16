@@ -307,7 +307,7 @@ export function capsuleModel() {
   const halo = new THREE.Mesh(new THREE.CircleGeometry(0.8, 20), new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.18, depthWrite: false }));
   halo.position.z = 0.05;
   g.add(halo);
-  g.add(glow(0xfff1b8, 2.6, 0.4)); // a soft glow: medication is a real light on the road
+  g.add(glow(0xfff1b8, 1.5, 0.3)); // a soft glow: medication is a real light on the road
   g.userData.halves = halves;
   return g;
 }
@@ -438,7 +438,7 @@ function billboardPull() {
 function racingSigns() {
   const words = CONFIG.hazards.racingSigns.words;
   const g = board(words[0], { w: 2.6, h: 1.2, y: 2.2, bg: '#fff1a8', px: 84 });
-  const neon = glow(NEON[0], 5, 0.45); // manic neon: a soft glow behind the sign
+  const neon = glow(NEON[0], 3, 0.3); // manic neon: a soft glow behind the sign
   neon.position.set(0, 2.2, -0.15);
   g.add(neon);
   let last = -1;

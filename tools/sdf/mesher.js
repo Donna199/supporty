@@ -2,7 +2,7 @@
 // grid cell the surface passes through), then:
 // - slides every vertex exactly onto the surface and takes its normal from the SDF (smooth shading),
 // - slides vertices near a colour border onto the border, so borders are clean lines,
-// - paints each vertex, with a soft darker outline where two colours meet.
+// - gives every triangle ONE colour and returns a separate triangle list per colour (sharp borders).
 import { field, shade, clamp } from './sdf.js';
 
 const CORNERS = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
@@ -58,56 +58,46 @@ function step(g, p, e, limit, flat) {
   return [p[0] - n[0] * s, p[1] - n[1] * s, p[2] - n[2] * s];
 }
 const unit = (v) => { const l = Math.hypot(...v) || 1; return v.map((c) => c / l); };
-const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-const rgb = (n) => (n.accent ? [1, 1, 1] : [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255));
 
-/** Returns { position, normal, color, accent, index } as flat arrays. Colours are linear (as glTF wants). */
-export function buildMesh(model) {
-  const h = model.cell, e = h * 0.2, f = (p) => field(model, p), edge = (p) => shade(model, p).edge;
+/**
+ * Meshes a model with grid cells of size `cell`. Returns { position, normal, groups: [{ color, index }] }:
+ * one shared set of vertices (normals straight from the SDF gradient, never from the triangles) and one
+ * triangle list per colour. No colour is ever blended between vertices, so every border is a sharp line.
+ */
+export function buildMesh(model, cell = model.cell) {
+  const h = cell, e = h * 0.2, f = (p) => field(model, p), edge = (p) => shade(model, p).edge;
   const { verts, quads } = surfaceNets(f, model.min, model.max, h);
-  const width = model.outline ?? h * 0.6, darkest = model.outlineDark ?? 0.22;
-  const normals = [], dark = [];
+  const position = [], normal = [], normals = [];
   verts.forEach((p0, i) => {
     let p = p0;
     for (let n = 0; n < 3; n++) p = step(f, p, e, h);
-    if (edge(p) < h * 0.75) {
-      // Near a colour border: slide along the surface onto it (but never far from where the mesher put it).
+    if (edge(p) < h * 0.8) {
+      // Near a colour border: slide along the surface onto it (but never far from where the mesher put it),
+      // so the border runs along triangle edges instead of zig-zagging through them.
       let q = p;
-      for (let n = 0; n < 4; n++) { q = step(edge, q, e * 0.5, h * 0.3, unit(gradient(f, q, e))); q = step(f, q, e, h); }
-      if (Math.hypot(...sub(q, p0)) < h * 0.85 && Math.abs(f(q)) < h * 0.05) p = q;
+      for (let n = 0; n < 5; n++) { q = step(edge, q, e * 0.5, h * 0.3, unit(gradient(f, q, e))); q = step(f, q, e, h); }
+      if (Math.hypot(...sub(q, p0)) < h * 0.9 && Math.abs(f(q)) < h * 0.05) p = q;
     }
     verts[i] = p;
     normals[i] = unit(gradient(f, p, e));
-    const t = 1 - clamp(edge(p) / width);
-    dark[i] = 1 - darkest * t * t * (3 - 2 * t); // the soft darker outline: strongest on the border itself
+    position.push(...p);
+    normal.push(...normals[i]);
   });
-  // Every triangle gets ONE colour (taken at its centre), so colours never bleed into each other.
-  // A vertex on a border is stored once per colour that touches it.
-  const out = { position: [], normal: [], color: [], accent: [], index: [] }, seen = new Map();
-  const vertex = (i, color) => {
-    const key = i + '|' + (color.accent ? 'accent' : color);
-    if (!seen.has(key)) {
-      seen.set(key, out.position.length / 3);
-      out.position.push(...verts[i]);
-      out.normal.push(...normals[i]);
-      out.color.push(...(color.accent ? [1, 1, 1] : rgb(color).map((v) => srgbToLinear(v * dark[i]))));
-      out.accent.push(color.accent ? dark[i] : 0);
-    }
-    return seen.get(key);
-  };
+  // Each triangle belongs to exactly one colour: the colour of the nearest SDF part at its centre.
+  const groups = new Map();
   for (const q of quads) {
     const d02 = Math.hypot(...sub(verts[q[0]], verts[q[2]])), d13 = Math.hypot(...sub(verts[q[1]], verts[q[3]]));
     const tris = d02 <= d13 ? [[q[0], q[1], q[2]], [q[0], q[2], q[3]]] : [[q[0], q[1], q[3]], [q[1], q[2], q[3]]];
     for (const [a, b, c] of tris) {
       const n = cross(sub(verts[b], verts[a]), sub(verts[c], verts[a]));
-      if (Math.hypot(...n) < 1e-9) continue;
+      if (Math.hypot(...n) < 1e-10) continue;
       const mid = [0, 1, 2].map((k) => (verts[a][k] + verts[b][k] + verts[c][k]) / 3);
       const avg = [0, 1, 2].map((k) => normals[a][k] + normals[b][k] + normals[c][k]);
       if (model.cull?.(mid, unit(avg))) continue;
       const color = shade(model, step(f, mid, e, h)).color;
-      const [i, j, k] = dot(n, avg) >= 0 ? [a, b, c] : [a, c, b];
-      out.index.push(vertex(i, color), vertex(j, color), vertex(k, color));
+      if (!groups.has(color)) groups.set(color, { color, index: [] });
+      groups.get(color).index.push(...(dot(n, avg) >= 0 ? [a, b, c] : [a, c, b]));
     }
   }
-  return out;
+  return { position, normal, groups: [...groups.values()] };
 }

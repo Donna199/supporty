@@ -4,8 +4,8 @@
 import * as THREE from 'three';
 import { WORLD as W, CHARACTER as CH } from './palette.js';
 import { HEAD, FACE as F } from './dims.js';
-import { GEO } from './generated.js';
-import { toon, vertexToon } from './models.js';
+import { bakedModel } from './generated.js';
+import { toon } from './models.js';
 
 const PI = Math.PI, FRONT = HEAD.half[2];
 const BLINK = { everySec: [2.4, 5], closeSec: 0.07, openSec: 0.11 };
@@ -31,10 +31,10 @@ function buildMouths() {
   return { calm, excited, flat };
 }
 
-/** Returns { body, setMood(phase), update(dt) }. `body` is placed at the kart's seat. */
-export function buildDriver(name) {
+/** Returns { body, setMood(phase), update(dt) }. `body` is placed at the kart's seat. `outline` = shell thickness. */
+export function buildDriver(name, outline = 0) {
   const body = new THREE.Group();
-  body.add(new THREE.Mesh(GEO[name], vertexToon()));
+  body.add(bakedModel(name, { outline }));
   const face = new THREE.Group();
   face.position.y = HEAD.y;
   body.add(face);

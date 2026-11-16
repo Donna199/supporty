@@ -246,13 +246,15 @@ export function outline(root, thickness = 0.03) {
     const m = o.material;
     if (o.isMesh && !o.isInstancedMesh && m?.isMeshToonMaterial && !m.transparent && !m.map && !o.userData.noOutline && o.geometry.attributes.normal) meshes.push(o);
   });
-  for (const o of meshes) {
-    const hull = new THREE.Mesh(hullGeometry(o.geometry, thickness / Math.max(0.2, o.scale.x)), hullMaterial(o.material));
-    hull.layers.set(OUTLINE_LAYER);
-    hull.userData.noOutline = true;
-    o.add(hull);
-  }
+  for (const o of meshes) o.add(hullMesh(o.geometry, o.material, thickness / Math.max(0.2, o.scale.x)));
   return root;
+}
+/** The outline shell for one geometry: its back faces, pushed out a little, in a darker tone of `material`'s colour. */
+export function hullMesh(geometry, material, thickness) {
+  const hull = new THREE.Mesh(hullGeometry(geometry, thickness), hullMaterial(material));
+  hull.layers.set(OUTLINE_LAYER);
+  hull.userData.noOutline = true;
+  return hull;
 }
 
 // ---------- Soft glow (only for real lights: headlights, medication, manic neon) ----------
