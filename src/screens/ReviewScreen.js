@@ -1,7 +1,7 @@
 // ReviewScreen: the Year in review. The camera pulls back as the kart rolls past
 // graduation and the road keeps going, with guardrails and the pit crew still there.
 // Shows the mood timeline (episodes shaded), stats, one reflection, research lines,
-// the closing line and the 988 line. Buttons: Drive again, Sources.
+// the closing line and the 988 line. Buttons: Drive again, Sources, Home (back to the title screen).
 import { CONFIG } from '../config.js';
 import { UI, hex } from '../world/palette.js';
 
@@ -62,6 +62,7 @@ export class ReviewScreen {
           <div class="row">
             <button class="btn again">Drive again</button>
             <button class="btn secondary sources-btn" aria-expanded="false">Sources</button>
+            <button class="btn secondary home-btn">Home</button>
           </div>
           <ol class="sources" hidden>${SOURCES.map((x) => `<li>${x}</li>`).join('')}</ol>
         </div>
@@ -70,6 +71,7 @@ export class ReviewScreen {
     drawTimeline($('.timeline'), log);
     countUp(app.ui.querySelectorAll('.stats b'));
     $('.again').addEventListener('click', () => app.show('drive'));
+    $('.home-btn').addEventListener('click', () => app.show('title'));
     $('.sources-btn').addEventListener('click', (e) => {
       const list = $('.sources');
       list.hidden = !list.hidden;
