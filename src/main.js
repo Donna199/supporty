@@ -7,6 +7,10 @@ import { createRoad } from './world/road.js';
 import { ChaseCamera } from './world/camera.js';
 import { createWeather } from './world/weather.js';
 import { buildKart } from './world/car.js';
+import { OUTLINE_LAYER } from './world/models.js';
+import { cssVars } from './world/palette.js';
+
+for (const [name, value] of cssVars()) document.documentElement.style.setProperty(name, value); // interface colours come from palette.js
 import { HostLink } from './net.js';
 import { Input } from './systems/input.js';
 import { Sound } from './systems/sound.js';
@@ -30,6 +34,13 @@ const camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 2200);
 
 const road = createRoad(scene);
 const weather = createWeather(scene, camera);
+weather.setSeasonal(road.seasonal);
+// Any shader that fails to compile is reported loudly instead of leaving a silent blank object.
+renderer.debug.onShaderError = (gl, program, vs, fs) => {
+  const msg = `Shader failed to compile: ${gl.getShaderInfoLog(vs) || ''} ${gl.getShaderInfoLog(fs) || ''} ${gl.getProgramInfoLog(program) || ''}`;
+  document.body.dataset.error = msg;
+  throw new Error(msg);
+};
 const chase = new ChaseCamera(camera);
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -45,6 +56,7 @@ const world = {
   setDriver(name) {
     if (world.kart) scene.remove(world.kart.group);
     world.kart = buildKart(name);
+    world.kart.setMood(world.phase ?? 'stable');
     scene.add(world.kart.group);
   },
   /** Put the kart on the road at car.s / car.x, facing where it is heading. */
@@ -57,6 +69,7 @@ const world = {
     kart.group.lookAt(kart.group.position.clone().add(heading));
     kart.setLean(car.lean ?? THREE.MathUtils.clamp(car.vx / CONFIG.world.laneChangeSpeed, -1, 1));
     kart.spin(car.speed * dt);
+    kart.update(dt);
     road.update(car.s);
   },
 };
@@ -69,6 +82,16 @@ const app = {
   sound: new Sound(),
   driver: 'girl',
   muted: false,
+  graphics: 'high',
+  /** Graphics: 'high' = outlines, drifting blossom and leaves, sharper picture; 'low' = those off, for slower laptops. */
+  setGraphics(level) {
+    app.graphics = level === 'low' ? 'low' : 'high';
+    const high = app.graphics === 'high';
+    if (high) camera.layers.enable(OUTLINE_LAYER); else camera.layers.disable(OUTLINE_LAYER);
+    weather.setQuality(high);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, high ? 2 : 1));
+    try { sessionStorage.setItem('supporty-graphics', app.graphics); } catch { /* private mode */ }
+  },
   localPad: null,
   screens: {},
   current: null,
@@ -87,6 +110,8 @@ const app = {
     app.localPad?.setScreen(name);
   },
   setPhase(phase) {
+    world.phase = phase;
+    world.kart?.setMood(phase);
     app.net.send({ t: 'phase', phase });
     app.localPad?.setPhase(phase);
   },
@@ -215,6 +240,9 @@ else renderer.setAnimationLoop(tick);
 // Debug shortcuts for testing: index.html?driver=boy&screen=drive
 const params = new URLSearchParams(location.search);
 if (params.get('driver') === 'boy') app.driver = 'boy';
+let savedGraphics = null;
+try { savedGraphics = sessionStorage.getItem('supporty-graphics'); } catch { /* private mode */ }
+app.setGraphics(params.get('graphics') || savedGraphics || 'high');
 world.setDriver(app.driver);
 app.show(app.screens[params.get('screen')] ? params.get('screen') : 'title');
 window.__app = app; // handy for debugging in the browser console

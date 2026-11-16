@@ -2,7 +2,7 @@
 
 Every model is built in code from simple shapes with soft toon shading and a blob shadow, in a rounded toy / vinyl-figure style: rounded boxes, capsules, smooth spheres and tori. No outside models, textures or images are used. Your concept sketches were used only as a reference.
 
-- Drivers and scenery are in `src/world/models.js`. The car is in `src/world/car.js`.
+- The drivers and the kart are signed-distance models in `tools/sdf/`, meshed once by `npm run models` into `assets/generated/*.glb` (one seamless surface each). `src/world/driver.js` adds the face (blinking eyes, three mouths) and `src/world/car.js` adds the spinning wheels and the glass. Scenery is in `src/world/models.js`.
 - Road items are in `src/world/itemModels.js`. They use the shared rounded shape helpers from `models.js`.
 - To view every item at once, open `index.html?screen=drive&gallery=1`.
 
@@ -10,8 +10,8 @@ Every model is built in code from simple shapes with soft toon shading and a blo
 
 | Model | Sketch | How it is built |
 | --- | --- | --- |
-| Girl driver | characters | Soft-cube skin-tone head; big round eyes with dark-brown pupils and a white sparkle; pink blush; small rounded ears. Blonde hair: a soft dome, centre-parted rounded bangs, and long tapered strands down the sides and back. Pink bow (two round loops and a soft knot). Rounded green T-shirt with soft short sleeves; dark skirt with a flared hem; capsule arms and legs; round hands. |
-| Boy driver | characters | Same face. Short black hair: a dome, a rounded nape and side pieces. Smooth cap of alternating red and light-red wedges, with a curved brim turned to the side and a top button. Soft red jacket open over a white T-shirt; black capsule legs with a white side stripe. |
+| Girl driver | characters | One seamless figure: soft-cube skin-tone head; blonde hair that is part of the head's shape (a shell with a centre-parted face window, long hair tapering down the back with soft strand lines); pink bow blended onto the hair; green T-shirt with a skin neckline; dark skirt; hands on the steering wheel. Face added in code: big round eyes with a sparkle and a blinking eyelid, pink blush, arched blonde brows, and three small mouths (calm, excited, flat) by mood phase. |
+| Boy driver | characters | Same head and face (peach blush, short dark brows). Short black hair as a shell with a straight hairline, showing only below the cap rim. Six-panel red cap blended onto the head, light panels at the front and both back corners, brim and top button. Red jacket open over a white T-shirt, collar, black pants with a white side stripe. |
 | Medication | assets | Red-and-white capsule that turns slowly, with a faint yellow ring and halo (kept subtle: a routine, not a power-up), under a small green drive-through arch labelled "Medication". |
 | Trophy | assets | Gold cup with two round handles, a knotted stem and a base. Used for the "Accepted!" trigger. |
 | REST STOP sign | assets | Red round sign with white "REST STOP" text on a grey pole, plus a small bed beside it. Pull-in stop on the right. |
@@ -23,7 +23,7 @@ Every model is built in code from simple shapes with soft toon shading and a blo
 
 | Model | Current design | Used for |
 | --- | --- | --- |
-| Car | A small teal open-top convertible. One sculpted body shell (hood, sunken cockpit, doors, trunk), wheels with chrome spokes set into arches, headlights in rounded pods, grille, cream bumpers, a glass windshield in a chrome frame, wing mirrors, door seams and handles, dashboard and steering wheel, cream seat with a headrest, folded soft-top, tail lights, a star number plate, and a stripe and tail lip in the driver's colour. | Player |
+| Car | A small teal open-top toy kart, one seamless surface: rounded hull with a sloping hood, round fenders over wheel arches, sunken deep-teal cockpit, dashboard, wing mirrors, cream bumpers, seat and windshield frame, round headlights, red tail lights, dark steering wheel and folded soft-top, a cream number plate, and a side stripe and tail lip in the driver's colour. Added in code: four spinning wheels, the glass, and the star on the plate. | Player |
 | Tree / hill / cloud | Two round-topped green tiers on a trunk / smooth squashed green balls / three white balls. | Scenery |
 | "Skip the rest stop" sign | Navy sign with a yellow crescent moon crossed out in red. | `allNighter` trigger |
 | Plane | White plane with a red tail and stripe, hovering low across the lane. | `redEye` trigger |
@@ -43,3 +43,10 @@ Every model is built in code from simple shapes with soft toon shading and a blo
 | Foggy fork | Signpost with ← → arrows that keep swapping; fog thickens. | Depressive hazard: indecision |
 | Harsh signs | Grey sign with harsh self-talk ("You ruined everything"). | Depressive hazard: guilt / worthlessness |
 | Graduation arch | Arch with a "Graduation day" banner, a spinning mortarboard and a checkered line. | Finish |
+
+## Added in the look pass
+
+- **Roadside props** (`src/world/scenery.js`, one instanced mesh each): bushes (two soft balls), flowers (stem, round bloom, yellow centre) and small houses (rounded walls, pink roof, door, windows, chimney). Snow patches appear only in winter.
+- **Finish arch:** the existing "Graduation day" banner with a spinning graduation cap, now with a row of pastel bunting flags.
+- **Outlines:** a slightly larger back-face copy of each solid model in a darker tone of its own colour (off in Graphics: Low).
+- **Glow:** soft additive sprites on the headlights, the medication capsule and the manic racing-thoughts sign only.

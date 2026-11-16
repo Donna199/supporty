@@ -5,40 +5,73 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import * as M from './models.js';
+import { WORLD as P, UI, CAR, SKY, PHASES, inSeason } from './palette.js';
 
 const C = CONFIG.colors;
+// Fog distance and light strength per phase. Every colour comes from palette.js.
 const LOOK = {
-  stable:     { sky: 0xffffff, fog: 0xf3ecdc, near: 140, far: 560, hemi: 1.5, sun: 2.1 },
-  manic:      { sky: 0xffc2ea, fog: 0xffd6f0, near: 160, far: 620, hemi: 1.7, sun: 2.4 },
-  depressive: { sky: 0x8f9aa6, fog: 0xa3abb3, near: 18, far: 150, hemi: 1.0, sun: 0.9 },
+  stable:     { near: 140, far: 560, hemi: 1.35, sun: 2.0, rim: 0.7 },
+  manic:      { near: 160, far: 620, hemi: 1.5, sun: 2.3, rim: 1.0 },
+  depressive: { near: 22, far: 170, hemi: 1.2, sun: 1.15, rim: 0.3 },
 };
+const PHASE_KEYS = ['stable', 'manic', 'depressive'], SEASON_KEYS = ['winter', 'spring', 'summer', 'autumn'];
+const SEASON_MID = { winter: 0.5, spring: 3.5, summer: 6.5, autumn: 9.5 }; // month (0 = January) at the middle of each season
+const PETALS = { count: 140, box: [40, 16, 50], fall: 1.6, sway: 0.8, size: 0.15 };
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const instant = new URLSearchParams(location.search).has('phase'); // testing: show a phase look at once
 
 export function createWeather(scene, camera) {
   // Sky dome with a soft vertical gradient (horizon cream, top blue). Its colour tints per phase.
   const skyGeo = new THREE.SphereGeometry(1000, 24, 12);
-  const colors = [];
-  const top = new THREE.Color(C.sky), horizon = new THREE.Color(0xfbf1dc);
-  const p = skyGeo.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const t = Math.min(1, Math.max(0, p.getY(i) / 450));
-    const c = horizon.clone().lerp(top, Math.pow(t, 0.6));
-    colors.push(c.r, c.g, c.b);
-  }
-  skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const p = skyGeo.attributes.position, skyT = [];
+  for (let i = 0; i < p.count; i++) skyT.push(Math.pow(Math.min(1, Math.max(0, p.getY(i) / 450)), 0.6));
+  const skyColor = new THREE.Float32BufferAttribute(new Float32Array(p.count * 3), 3);
+  skyGeo.setAttribute('color', skyColor);
   const skyMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false });
   const sky = new THREE.Mesh(skyGeo, skyMat);
   scene.add(sky);
 
-  scene.fog = new THREE.Fog(LOOK.stable.fog, LOOK.stable.near, LOOK.stable.far);
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x9cc58a, LOOK.stable.hemi);
-  const sun = new THREE.DirectionalLight(0xfff1dd, LOOK.stable.sun);
+  scene.fog = new THREE.Fog(SKY.stable[1], LOOK.stable.near, LOOK.stable.far);
+  // One soft warm key light, a gentle sky/ground fill, and a subtle rim light that always comes
+  // from ahead of the camera, so the kart and drivers get a soft bright edge.
+  const hemi = new THREE.HemisphereLight(UI.white, P.grass, LOOK.stable.hemi);
+  const sun = new THREE.DirectionalLight(CAR.lamp, LOOK.stable.sun);
   sun.position.set(-60, 120, 40);
-  scene.add(hemi, sun);
+  const rim = new THREE.DirectionalLight(UI.paper, LOOK.stable.rim);
+  scene.add(hemi, sun, rim, rim.target);
+
+  // Blossom (spring) and leaves (autumn): a few small soft flecks drifting down around the camera.
+  const petalPos = new Float32Array(PETALS.count * 3);
+  for (let i = 0; i < PETALS.count; i++) petalPos.set(PETALS.box.map((v, k) => (k === 1 ? Math.random() : Math.random() - 0.5) * v), i * 3);
+  const petalGeo = new THREE.BufferGeometry();
+  petalGeo.setAttribute('position', new THREE.BufferAttribute(petalPos, 3));
+  // Each fleck is a small soft round dot (drawn once on a canvas), never a hard square.
+  const dotCanvas = document.createElement('canvas');
+  dotCanvas.width = dotCanvas.height = 32;
+  const dot = dotCanvas.getContext('2d'), fade = dot.createRadialGradient(16, 16, 0, 16, 16, 16);
+  fade.addColorStop(0, 'rgba(255,255,255,1)'); fade.addColorStop(0.6, 'rgba(255,255,255,0.9)'); fade.addColorStop(1, 'rgba(255,255,255,0)');
+  dot.fillStyle = fade; dot.fillRect(0, 0, 32, 32);
+  const petalMat = new THREE.PointsMaterial({ size: PETALS.size, color: UI.pink, map: new THREE.CanvasTexture(dotCanvas), transparent: true, opacity: 0, depthWrite: false });
+  const petals = new THREE.Points(petalGeo, petalMat);
+  petals.frustumCulled = false;
+  scene.add(petals);
+  const season = { winter: 1, spring: 0, summer: 0, autumn: 0 };
+  let seasonal = null, high = true, time = 0;
+  const c1 = new THREE.Color(), c2 = new THREE.Color(), c3 = new THREE.Color(), topColor = new THREE.Color(), side = new THREE.Vector3();
+  /** A palette colour blended over the current seasons (and, for the sky, the current phase mix). */
+  const seasonColor = (base, key, out) => {
+    out.setRGB(0, 0, 0);
+    for (const k of SEASON_KEYS) if (season[k] > 0) out.add(c3.set(inSeason(base, k, key)).multiplyScalar(season[k]));
+    return out;
+  };
+  /** Tint for a material whose own colours are already painted in: season colour divided by the base colour. */
+  const seasonTint = (mat, base, key) => {
+    seasonColor(base, key, mat.color); c3.set(base);
+    mat.color.setRGB(mat.color.r / c3.r, mat.color.g / c3.g, mat.color.b / c3.b);
+  };
 
   // A few drifting clouds.
-  const clouds = new THREE.InstancedMesh(M.cloudGeometry(), new THREE.MeshToonMaterial({ vertexColors: true, fog: false }), 14);
+  const clouds = new THREE.InstancedMesh(M.cloudGeometry(), new THREE.MeshToonMaterial({ color: UI.white, emissive: UI.paper, emissiveIntensity: 0.55, fog: false }), 14); // lit from within a little, so they stay soft and white
   const d = new THREE.Object3D();
   for (let i = 0; i < 14; i++) {
     const a = (i / 14) * Math.PI * 2 + i;
@@ -71,12 +104,12 @@ export function createWeather(scene, camera) {
   const linePos = new Float32Array(LINES * 6);
   const lineData = [];
   for (let i = 0; i < LINES; i++) {
-    const a = Math.random() * Math.PI * 2, r = 2.2 + Math.random() * 2.5;
-    lineData.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, z: -Math.random() * 30, len: 2 + Math.random() * 3 });
+    const a = Math.random() * Math.PI * 2, r = 3.4 + Math.random() * 2.2; // near the edges of the view only
+    lineData.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 0.6, z: -Math.random() * 30, len: 0.8 + Math.random() * 1.4 });
   }
   const lineGeo = new THREE.BufferGeometry();
   lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
-  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthTest: false });
+  const lineMat = new THREE.LineBasicMaterial({ color: UI.yellow, transparent: true, opacity: 0, depthTest: false });
   const speedLines = new THREE.LineSegments(lineGeo, lineMat);
   speedLines.frustumCulled = false;
   speedLines.renderOrder = 3;
@@ -99,15 +132,25 @@ export function createWeather(scene, camera) {
   const canvas = document.getElementById('game');
   const w = { stable: 1, manic: 0, depressive: 0 };
   const mix = (key) => w.stable * LOOK.stable[key] + w.manic * LOOK.manic[key] + w.depressive * LOOK.depressive[key];
-  const mixColor = (key, out) => out.setRGB(0, 0, 0)
-    .add(new THREE.Color(LOOK.stable[key]).multiplyScalar(w.stable))
-    .add(new THREE.Color(LOOK.manic[key]).multiplyScalar(w.manic))
-    .add(new THREE.Color(LOOK.depressive[key]).multiplyScalar(w.depressive));
+  /** Sky colour (0 = top, 1 = horizon) for the current mix of phases and seasons. */
+  const skyMix = (which, out) => {
+    out.setRGB(0, 0, 0);
+    for (const k of PHASE_KEYS) if (w[k] > 0.001) out.add(seasonColor(SKY[k][which], '', c2).multiplyScalar(w[k]));
+    return out;
+  };
   let target = { stable: 1, manic: 0, depressive: 0 }, episode = 'stable', fogBoost = 0, speed = 1;
 
   return {
     /** weights: {stable, manic, depressive}; episode: current phase; speedFactor: kart speed multiplier. */
     setBlend(weights, phase = 'stable', speedFactor = 1) { target = weights; episode = phase; speed = speedFactor; },
+    /** month: 0 = start of January ... 12 = end of December. Seasons cross-fade into each other. */
+    setSeason(month) {
+      for (const k of SEASON_KEYS) { const d = Math.abs(((month - SEASON_MID[k]) % 12 + 18) % 12 - 6); season[k] = Math.max(0, 1 - d / 3); }
+    },
+    /** The materials the seasons tint (from road.js). */
+    setSeasonal(materials) { seasonal = materials; },
+    /** Graphics: High shows the drifting blossom and leaves; Low hides them. */
+    setQuality(isHigh) { high = isHigh; },
     /** Throw a little mud from the kart's back wheels. */
     spray(kart, strength) {
       sprayAcc += strength * 0.05;
@@ -135,8 +178,40 @@ export function createWeather(scene, camera) {
       }
       const k = instant ? 1 : 1 - Math.exp(-1.5 * dt);
       for (const key of Object.keys(w)) w[key] += (target[key] - w[key]) * k;
-      mixColor('sky', skyMat.color);
-      mixColor('fog', scene.fog.color);
+      // Sky gradient and haze, from the palette's sky colours for this mix of phases and seasons.
+      const top = skyMix(0, topColor), horizon = skyMix(1, scene.fog.color);
+      for (let i = 0; i < skyT.length; i++) { c1.copy(horizon).lerp(top, skyT[i]); skyColor.setXYZ(i, c1.r, c1.g, c1.b); }
+      skyColor.needsUpdate = true;
+      rim.intensity = mix('rim');
+      clouds.material.emissiveIntensity = 0.55 - 0.5 * w.depressive; // greyer clouds on low days
+      clouds.material.color.setScalar(1 - 0.3 * w.depressive);
+      // The rim light sits ahead of the camera, a little above and to one side, shining back at the kart.
+      camera.getWorldDirection(tmp);
+      rim.target.position.copy(camera.position).addScaledVector(tmp, 9);
+      rim.position.copy(rim.target.position).addScaledVector(tmp, 30).add(side.set(-tmp.z * 12, 16, tmp.x * 12));
+      if (seasonal) {
+        seasonColor(P.grass, 'grass', seasonal.ground.color);
+        seasonTint(seasonal.hills, P.hill[0], 'hill');
+        seasonTint(seasonal.trees, P.treeLeaf[1], 'treeLeaf');
+        seasonal.foliage.color.copy(seasonal.trees.color);
+        seasonal.snow.material.opacity = Math.min(1, season.winter * 1.4);
+        seasonal.snow.visible = season.winter > 0.03;
+      }
+      // Blossom in spring, leaves in autumn, a little snow in winter.
+      time += dt;
+      petalMat.opacity = high && !reduceMotion ? Math.min(0.9, Math.max(season.spring, season.autumn, season.winter) * 1.3) : 0;
+      petals.visible = petalMat.opacity > 0.02;
+      if (petals.visible) {
+        petalMat.color.set(season.winter >= Math.max(season.spring, season.autumn) ? UI.white : season.spring >= season.autumn ? UI.pink : CAR.amber);
+        petals.position.set(camera.position.x, camera.position.y - 6, camera.position.z);
+        for (let i = 0; i < PETALS.count; i++) {
+          let y = petalPos[i * 3 + 1] - dt * PETALS.fall * (0.6 + (i % 5) * 0.2);
+          if (y < 0) y += PETALS.box[1];
+          petalPos[i * 3 + 1] = y;
+          petalPos[i * 3] += Math.sin(time * 1.3 + i) * dt * PETALS.sway;
+        }
+        petalGeo.attributes.position.needsUpdate = true;
+      }
       fogBoost = Math.max(0, fogBoost - dt);
       const thick = fogBoost > 0 ? 0.35 : 1;
       scene.fog.near = mix('near') * thick;
@@ -159,7 +234,7 @@ export function createWeather(scene, camera) {
       }
 
       // Speed lines: from the high leaning zone up, strongest in a manic episode.
-      lineMat.opacity = reduceMotion ? 0 : Math.min(0.7, Math.max(0, (w.manic - 0.2) * 1.2));
+      lineMat.opacity = reduceMotion ? 0 : Math.min(0.5, Math.max(0, (w.manic - 0.2) * 1.2));
       speedLines.visible = lineMat.opacity > 0.01;
       if (speedLines.visible) {
         const arr = lineGeo.attributes.position.array;
@@ -172,8 +247,9 @@ export function createWeather(scene, camera) {
       }
 
       // Colour grade on the whole picture, plus the edge effects.
-      const sat = 1 + 0.55 * w.manic - 0.6 * w.depressive;
-      const bright = 1 + 0.04 * w.manic - 0.14 * w.depressive;
+      // Same hues, more or less saturated: the numbers are the palette's phase settings.
+      const sat = w.stable + w.manic * PHASES.manic.sat + w.depressive * PHASES.depressive.sat;
+      const bright = 1 + w.manic * PHASES.manic.light - w.depressive * 0.04;
       canvas.style.filter = `saturate(${sat.toFixed(3)}) brightness(${bright.toFixed(3)})`;
       fx.dataset.phase = episode;
       fx.classList.toggle('calm', reduceMotion);

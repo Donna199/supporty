@@ -1,9 +1,10 @@
 // road.js: one long, gently curving 3-lane road (a closed spline loop, so it never ends),
-// with lane markings, grass, low-poly hills, trees, brown fences and the
+// with lane markings, grass, low-poly hills, trees, roadside props (scenery.js), brown fences and the
 // red-and-cream guardrails (one panel of every three per guardrail level).
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import * as M from './models.js';
+import { addScenery } from './scenery.js';
 
 const W = CONFIG.world;
 const C = CONFIG.colors;
@@ -86,7 +87,8 @@ export function createRoad(scene) {
   }
 
   // ---- Ground, hills and trees ----
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(1100, 40), M.toon(C.grass));
+  const groundMat = M.toon(C.grass, { name: 'ground' });
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(1100, 40), groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.03;
   scene.add(ground);
@@ -99,7 +101,8 @@ export function createRoad(scene) {
   };
 
   const hillGeo = M.hillGeometry();
-  const hills = new THREE.InstancedMesh(hillGeo, M.toon(0xffffff), W.hillCount);
+  const hillMat = M.toon(0xffffff, { name: 'hills' });
+  const hills = new THREE.InstancedMesh(hillGeo, hillMat, W.hillCount);
   const dummy = new THREE.Object3D();
   let placed = 0, tries = 0;
   while (placed < W.hillCount && tries++ < 2000) {
@@ -119,7 +122,8 @@ export function createRoad(scene) {
   hills.count = placed;
   scene.add(hills);
 
-  const trees = C.treeLeaf.map((leaf) => new THREE.InstancedMesh(M.treeGeometry(leaf), M.vertexToon(), W.treeCount));
+  const treeMat = M.toon(0xffffff, { vertexColors: true, name: 'trees' });
+  const trees = C.treeLeaf.map((leaf) => new THREE.InstancedMesh(M.treeGeometry(leaf), treeMat, W.treeCount));
   const treeShadows = new THREE.InstancedMesh(new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2), M.blobMaterial(), W.treeCount);
   const counts = [0, 0, 0];
   for (let n = 0; n < W.treeCount; n++) {
@@ -143,6 +147,8 @@ export function createRoad(scene) {
   treeShadows.count = counts[0] + counts[1] + counts[2];
   scene.add(treeShadows);
 
+  const scenery = addScenery(scene, { pointAt, frameAt, length, half, rand, distToRoad });
+
   // ---- Fences: only built near the kart, recycled as it drives ----
   const guardSpacing = length / Math.round(length / W.guardrailSpacing);
   const fenceSpacing = length / Math.round(length / W.fenceSpacing);
@@ -154,6 +160,8 @@ export function createRoad(scene) {
 
   return {
     length, frameAt, pointAt, wrap, halfWidth: half,
+    /** Materials the seasons tint: grass, hills, tree and bush leaves, and the winter snow patches. */
+    seasonal: { ground: groundMat, hills: hillMat, trees: treeMat, foliage: scenery.foliage, snow: scenery.snow },
     /** Show one red-and-cream panel in every three per guardrail level (0 = none, 3 = solid). */
     setGuardrails(n) { if (n !== level) { level = n; guardrails.dirty = true; } },
     update(carS) { guardrails.update(carS); fences.update(carS); },

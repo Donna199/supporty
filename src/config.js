@@ -1,6 +1,8 @@
 // All tunable numbers for Supporty live here, so you can tweak the game
 // without touching game logic. Values marked "PRD" come straight from PRD.md.
 
+import { WORLD } from './world/palette.js';
+
 export const CONFIG = {
   secondsPerMonth: 15, // PRD
   months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -168,15 +170,7 @@ export const CONFIG = {
   },
 
   // ---- Colours (soft, muted, toy-like) ----
-  colors: {
-    sky: 0xbfe3f2, skyManic: 0xffb3e6, skyDepressive: 0x8e9aa6,
-    grass: 0x9cc58a, grassDark: 0x84b276, hill: [0xa9cf8f, 0x93c17f, 0xb7d69a],
-    road: 0x9a948c, roadEdge: 0xf6efe0, laneDash: 0xf6efe0, shoulder: 0x857f78,
-    treeLeaf: [0x6fa36a, 0x7fb176, 0x5e9461], treeTrunk: 0x8a6a4f,
-    fenceBrown: 0x5a2c1a, guardRed: 0xd23b3b, guardCream: 0xfbeedd,
-    kart: 0x8ccfcb, kartTrim: 0xf6efe0, kartDark: 0x5f9c9a, kartAccentGirl: 0xf5a3c7, kartAccentBoy: 0xe57a72, tyre: 0x3c3a3a,
-    skin: 0xfde4c5, blush: 0xf4a1a8, eyeWhite: 0xffffff, pupil: 0x3b1f17,
-  },
+  colors: WORLD, // every colour lives in world/palette.js
 
   // linkTimeoutSec: if the phone finds the room but the direct link has not opened by then, the network is blocking it.
   net: { peerPrefix: 'supporty-v1-', roomLetters: 'BCDFGHJKLMNPQRSTVWXZ', linkTimeoutSec: 8 },

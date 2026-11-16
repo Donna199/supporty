@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "models": "node tools/build-models.js",
+    "build": "node tools/check-shaders.js && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

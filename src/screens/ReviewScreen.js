@@ -3,6 +3,7 @@
 // Shows the mood timeline (episodes shaded), stats, one reflection, research lines,
 // the closing line and the 988 line. Buttons: Drive again, Sources.
 import { CONFIG } from '../config.js';
+import { UI, hex } from '../world/palette.js';
 
 const RESEARCH = [
   ['Sleep loss can trigger manic episodes: about 1 in 5 people with bipolar disorder said it had set off a high-mood episode.', 'Lewis et al., 2017'],
@@ -111,9 +112,13 @@ function drawTimeline(cv, log) {
   const x = (t) => L + (Math.min(t, total) / total) * (W - L - R);
   const y = (m) => T + ((100 - m) / 200) * (H - T - B);
   g.font = '800 26px Inter, system-ui, sans-serif';
-  g.fillStyle = '#fffaf0'; g.fillRect(0, 0, W, H);
-  // stable zone band
-  g.fillStyle = '#e1efd9';
+  g.fillStyle = hex(UI.white); g.fillRect(0, 0, W, H);
+  // The three zones as soft bands (the same colours as the mood gauge), inside a rounded plot area.
+  g.save();
+  g.beginPath(); g.roundRect(L, T, W - L - R, H - T - B, 18); g.clip();
+  g.globalAlpha = 0.45; g.fillStyle = hex(UI.zoneHigh); g.fillRect(L, T, W - L - R, y(CONFIG.mood.stable) - T);
+  g.fillStyle = hex(UI.zoneLow); g.fillRect(L, y(-CONFIG.mood.stable), W - L - R, H - B - y(-CONFIG.mood.stable));
+  g.globalAlpha = 1; g.fillStyle = hex(UI.zoneStable);
   g.fillRect(L, y(CONFIG.mood.stable), W - L - R, y(-CONFIG.mood.stable) - y(CONFIG.mood.stable));
   // episodes
   for (const ep of log?.episodes || []) {
@@ -121,14 +126,15 @@ function drawTimeline(cv, log) {
     g.fillRect(x(ep.start), T, x(ep.end ?? total) - x(ep.start), H - T - B);
   }
   // Each shaded band also carries a letter, so episodes never rely on colour alone (WCAG 1.4.1).
-  g.fillStyle = '#3b3433'; g.textAlign = 'center'; g.textBaseline = 'top';
+  g.fillStyle = hex(UI.ink); g.textAlign = 'center'; g.textBaseline = 'top';
   for (const ep of log?.episodes || []) {
     const x0 = x(ep.start), x1 = x(ep.end ?? total);
     if (x1 - x0 >= 22) g.fillText(ep.phase === 'manic' ? 'M' : 'D', (x0 + x1) / 2, T + 8);
   }
+  g.restore();
   // axes, zone words and month labels
-  g.strokeStyle = '#3b3433'; g.lineWidth = 2; g.fillStyle = '#3b3433';
-  g.strokeRect(L, T, W - L - R, H - T - B);
+  g.strokeStyle = 'rgba(59,52,51,0.3)'; g.lineWidth = 2; g.fillStyle = hex(UI.ink);
+  g.beginPath(); g.roundRect(L, T, W - L - R, H - T - B, 18); g.stroke();
   g.textAlign = 'right'; g.textBaseline = 'middle';
   g.fillText('HIGH', L - 14, y(65)); g.fillText('STABLE', L - 14, y(0)); g.fillText('LOW', L - 14, y(-65));
   g.textAlign = 'center'; g.textBaseline = 'top';
@@ -138,10 +144,12 @@ function drawTimeline(cv, log) {
   g.setLineDash([]);
   // mood line
   const pts = log?.samples || [];
-  g.strokeStyle = '#3b3433'; g.lineWidth = 5; g.lineJoin = 'round';
+  g.strokeStyle = hex(UI.ink); g.lineWidth = 5; g.lineJoin = g.lineCap = 'round';
   g.beginPath();
   pts.forEach((p, i) => (i ? g.lineTo(x(p.t), y(p.mood)) : g.moveTo(x(p.t), y(p.mood))));
   g.stroke();
+  const last = pts[pts.length - 1]; // a dot marks where the year ended
+  if (last) { g.beginPath(); g.arc(x(last.t), y(last.mood), 9, 0, Math.PI * 2); g.fillStyle = hex(UI.yellow); g.fill(); g.lineWidth = 4; g.stroke(); }
   const eps = log?.episodes || [];
   cv.setAttribute('aria-label', `Mood timeline from January to December. ${eps.length} episode${eps.length === 1 ? '' : 's'}: ${eps.map((e) => `${e.phase} in ${CONFIG.months[Math.min(11, Math.floor(e.start / CONFIG.secondsPerMonth))]}`).join(', ') || 'none'}.`);
 }

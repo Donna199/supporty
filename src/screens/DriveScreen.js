@@ -190,12 +190,14 @@ export class DriveScreen {
             <button class="btn secondary open-guide">Road guide</button>
             <button class="btn secondary restart">Restart</button>
             <button class="btn secondary mute">${app.muted ? 'Sound on' : 'Mute'}</button>
+            <button class="btn secondary graphics" aria-label="Graphics quality: ${app.graphics === 'low' ? 'Low' : 'High'}. Press to change.">Graphics: ${app.graphics === 'low' ? 'Low' : 'High'}</button>
           </div>
         </div>
       </div>`;
     if (needPhone) drawQR(layer.querySelector('.qr'), controllerUrl(app.net.code));
     layer.querySelector('.resume').addEventListener('click', () => this.togglePause(false));
     layer.querySelector('.restart').addEventListener('click', () => app.show('title'));
+    layer.querySelector('.graphics').addEventListener('click', () => { app.setGraphics(app.graphics === 'low' ? 'high' : 'low'); this.renderPause(); layer.querySelector('.graphics')?.focus(); });
     layer.querySelector('.open-guide').addEventListener('click', () => {
       const holder = document.createElement('div');
       app.ui.appendChild(holder);
@@ -238,6 +240,7 @@ export class DriveScreen {
     const { world } = this.app;
     world.chase.setBlend(w);
     world.weather.setBlend(w, this.mood.phase, this.feel.speed);
+    world.weather.setSeason(Math.min(12, (this.time || 0) / CONFIG.secondsPerMonth));
     this.app.sound.setBlend(w, this.mood.phase);
 
     // Manic episode: the kart keeps swerving toward other lanes (agitation, PRD allLanes).

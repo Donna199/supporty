@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { buildItem } from '../world/itemModels.js';
+import { outline } from '../world/models.js';
 
 const W = CONFIG.world;
 const HALF = (W.lanes * W.laneWidth) / 2;
@@ -31,7 +32,7 @@ export class Items {
   /** Place an item at road distance s. lane: -1/0/1, side: -1/+1 for roadside items, span: fills all lanes. */
   spawn(id, { s, lane = 0, side = 1, span = false, highlight = false }) {
     const kind = KIND[id];
-    const group = buildItem(id, { span });
+    const group = outline(buildItem(id, { span }));
     const lateral = span || kind === 'finish' ? 0 : kind === 'pull' ? ROADSIDE + 0.8 : kind === 'roadside' ? side * ROADSIDE : lane * W.laneWidth;
     this.road.frameAt(s, this.f);
     group.position.copy(this.f.pos).addScaledVector(this.f.right, lateral);

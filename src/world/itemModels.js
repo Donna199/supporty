@@ -4,7 +4,8 @@
 // Sketched: medication capsule, trophy, REST STOP sign, rock. The rest are listed in MODELS.md.
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { toon, box, ball, cyl, cone, blobShadow } from './models.js';
+import { toon, box, ball, cyl, cone, blobShadow, glow } from './models.js';
+import { NEON } from './palette.js';
 
 const W = CONFIG.world;
 const HALF = (W.lanes * W.laneWidth) / 2;
@@ -301,11 +302,12 @@ export function capsuleModel() {
   halves.scale.setScalar(0.9);
   halves.rotation.z = -0.7;
   g.add(halves);
-  const glow = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.05, 6, 24), new THREE.MeshBasicMaterial({ color: 0xffe28a, transparent: true, opacity: 0.45 }));
-  g.add(glow);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.05, 6, 24), new THREE.MeshBasicMaterial({ color: 0xffe28a, transparent: true, opacity: 0.45 }));
+  g.add(ring);
   const halo = new THREE.Mesh(new THREE.CircleGeometry(0.8, 20), new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.18, depthWrite: false }));
   halo.position.z = 0.05;
   g.add(halo);
+  g.add(glow(0xfff1b8, 2.6, 0.4)); // a soft glow: medication is a real light on the road
   g.userData.halves = halves;
   return g;
 }
@@ -436,10 +438,13 @@ function billboardPull() {
 function racingSigns() {
   const words = CONFIG.hazards.racingSigns.words;
   const g = board(words[0], { w: 2.6, h: 1.2, y: 2.2, bg: '#fff1a8', px: 84 });
+  const neon = glow(NEON[0], 5, 0.45); // manic neon: a soft glow behind the sign
+  neon.position.set(0, 2.2, -0.15);
+  g.add(neon);
   let last = -1;
   g.userData.spin = (t) => {
     const i = Math.floor(t * 4) % words.length; // changes too fast to read: racing thoughts
-    if (i !== last) { last = i; g.userData.panel.userData.setText(words[i]); }
+    if (i !== last) { last = i; g.userData.panel.userData.setText(words[i]); neon.material.color.set(NEON[i % NEON.length]); }
   };
   return g;
 }
@@ -500,6 +505,14 @@ function finish() {
   for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) {
     const t = box((HALF * 2) / 12, 0.03, 0.6, (i + j) % 2 ? 0x3b3433 : 0xfffaf0, -HALF + (i + 0.5) * ((HALF * 2) / 12), 0.03, j * 0.6);
     g.add(t);
+  }
+  // Bunting: a row of small pastel flags hanging under the banner.
+  const flagColors = [0xf5a3c7, 0xffe9a8, 0xa8e6cf, 0x8ccfcb];
+  for (let i = 0; i < 13; i++) {
+    const flag = cone(0.28, 0.5, flagColors[i % flagColors.length], -HALF + (i + 0.5) * ((HALF * 2) / 13), 2.55 + 0.1 * Math.cos((i / 12) * Math.PI * 2), 0, 4);
+    flag.rotation.x = Math.PI;
+    flag.scale.z = 0.25;
+    g.add(flag);
   }
   g.userData.spin = (t) => { cap.rotation.y = t; };
   return g;

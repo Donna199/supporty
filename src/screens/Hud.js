@@ -1,5 +1,5 @@
 // Hud.js: the drive screen's heads-up display (HTML on top of the 3D view).
-// Top: mood meter LOW – STABLE – HIGH with a needle and word labels (not colour only).
+// Top: mood gauge, a curved band LOW – STABLE – HIGH with a needle and word labels (not colour only).
 // Top-left: calendar (phase colour during episodes) and coin count.
 // Top-right: guardrail level, pause, and in a manic episode a rear-view mirror
 // where friends fall behind (impaired social functioning).
@@ -11,8 +11,31 @@ import { iconFor } from '../world/thumbs.js';
 
 const M = CONFIG.mood;
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const fence = '<span class="gr-fence"><i></i><i></i><i></i><b></b><b></b></span>';
-const GLYPH = { up: '↑', down: '↓', good: '✓', info: '•', manic: '↑', depressive: '↓', story: '✦' };
+// Guardrail level: a small shield with a fence on it (filled when that level is held).
+const fence = '<svg class="gr-fence" viewBox="0 0 24 28" aria-hidden="true"><path class="sh" d="M12 1.5 21.5 5v8.2c0 6.2-4 10.9-9.5 13.3C6.5 24.1 2.5 19.4 2.5 13.2V5z"/><path class="rail" d="M7 11.2h10M7 16h10M8.8 8.6v10M12 8.6v10M15.2 8.6v10"/></svg>';
+// Simple line icons for pop-ups that have no item picture.
+const svg = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+const UP = svg('M12 19V5M5.5 11.5 12 5l6.5 6.5'), DOWN = svg('M12 5v14M5.5 12.5 12 19l6.5-6.5');
+const GLYPH = { up: UP, down: DOWN, manic: UP, depressive: DOWN, good: svg('M5 12.5l4.5 4.5L19 7.5'), info: svg('M12 11v6M12 7.2v.1'),
+  story: svg('M12 3.5l2.3 5.6 6 .5-4.6 3.9 1.4 5.9L12 16.3l-5.1 3.1 1.4-5.9L3.7 9.6l6-.5z') };
+
+// The mood gauge: a gently curved band (part of a big circle) with LOW / STABLE / HIGH zones.
+const G = { w: 560, cy: 930, r: 900, band: 40, half: 16.66 };            // half = degrees from the middle to each end
+const onArc = (deg, r = G.r) => { const a = (deg * Math.PI) / 180; return [G.w / 2 + r * Math.sin(a), G.cy - r * Math.cos(a)]; };
+const arc = (from, to) => { const [x0, y0] = onArc(from), [x1, y1] = onArc(to); return `M${x0.toFixed(1)} ${y0.toFixed(1)}A${G.r} ${G.r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`; };
+function gauge() {
+  const st = G.half * (M.stable / M.max);
+  const label = (deg, text) => { const [x, y] = onArc(deg); return `<text class="zone-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}" transform="rotate(${deg} ${x.toFixed(1)} ${y.toFixed(1)})">${text}</text>`; };
+  const tick = (deg) => { const [x0, y0] = onArc(deg, G.r - G.band / 2), [x1, y1] = onArc(deg, G.r + G.band / 2); return `<path class="g-tick" d="M${x0.toFixed(1)} ${y0.toFixed(1)}L${x1.toFixed(1)} ${y1.toFixed(1)}"/>`; };
+  const top = G.cy - G.r;
+  return `<svg class="gauge" viewBox="0 -16 ${G.w} 118" aria-hidden="true">
+    <path class="g-panel" d="${arc(-G.half, G.half)}"/>
+    <path class="g-zone low" d="${arc(-G.half, -st)}"/><path class="g-zone high" d="${arc(st, G.half)}"/><path class="g-zone stable" d="${arc(-st, st)}"/>
+    ${tick(-st)}${tick(st)}
+    ${label(-(G.half + st) / 2, 'LOW')}${label(0, 'STABLE')}${label((G.half + st) / 2, 'HIGH')}
+    <g class="needle"><path class="needle-stem" d="M${G.w / 2} ${top - G.band / 2 - 4}V${top + G.band / 2 + 6}"/><circle class="needle-head" cx="${G.w / 2}" cy="${top - G.band / 2 - 6}" r="11"/></g>
+  </svg>`;
+}
 const now = () => performance.now() / 1000;
 const PAUSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="2" width="5" height="16" rx="2"/><rect x="12" y="2" width="5" height="16" rx="2"/></svg>';
 /** Restart a one-shot CSS animation class (month pop, coin bump). */
@@ -29,12 +52,7 @@ export class Hud {
           <div class="coin-count"><i class="coin-dot" aria-hidden="true"></i><span class="sr-only">Coins: </span><span class="coin-num">0</span></div>
         </div>
         <div class="meter" role="meter" aria-label="Mood" aria-valuemin="-100" aria-valuemax="100">
-          <div class="meter-track">
-            <div class="zone low"><span>LOW</span></div>
-            <div class="zone stable"><span>STABLE</span></div>
-            <div class="zone high"><span>HIGH</span></div>
-            <div class="needle"><div class="needle-head"></div></div>
-          </div>
+          <div class="meter-track">${gauge()}</div>
           <div class="episode"><span class="episode-name"></span><div class="episode-bar"><div class="episode-fill"></div></div></div>
         </div>
         <div class="guardrails" role="img" aria-label="Guardrails: 2 of 3">
@@ -62,10 +80,6 @@ export class Hud {
       popup: $('.popup'), popIcon: $('.popup-icon'), popText: $('.popup-text'),
       grBox: $('.guardrails'), needleHead: $('.needle-head'), keyHint: $('.key-hint'), skip: $('.skip-practice') };
     $('.pause-btn').addEventListener('click', onPause);
-    const stablePct = (M.stable / M.max) * 50;
-    this.el.querySelector('.zone.low').style.width = `${50 - stablePct}%`;
-    this.el.querySelector('.zone.stable').style.width = `${stablePct * 2}%`;
-    this.el.querySelector('.zone.high').style.width = `${50 - stablePct}%`;
     this.waiting = [];
     this.current = null;
   }
@@ -73,7 +87,7 @@ export class Hud {
   /** state: { mood, phase, guardrails, monthIndex, monthProgress, episodeLeft, episodeLength, coins } */
   update(s) {
     const $ = this.$;
-    $.needle.style.left = `${50 + (s.mood / M.max) * 50}%`;
+    $.needle.style.transform = `rotate(${((s.mood / M.max) * G.half).toFixed(2)}deg)`;
     $.meter.setAttribute('aria-valuenow', Math.round(s.mood));
     // Words for screen readers, updated only when they change (WCAG 4.1.2).
     const zone = s.phase === 'manic' ? 'Manic episode' : s.phase === 'depressive' ? 'Depressive episode'
