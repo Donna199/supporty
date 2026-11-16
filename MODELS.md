@@ -2,7 +2,7 @@
 
 Every model is built in code from simple shapes with soft toon shading and a blob shadow, in a rounded toy / vinyl-figure style: rounded boxes, capsules, smooth spheres and tori. No outside models, textures or images are used. Your concept sketches were used only as a reference.
 
-- Drivers, kart and scenery are in `src/world/models.js`.
+- Drivers and scenery are in `src/world/models.js`. The car is in `src/world/car.js`.
 - Road items are in `src/world/itemModels.js`. They use the shared rounded shape helpers from `models.js`.
 - To view every item at once, open `index.html?screen=drive&gallery=1`.
 
@@ -23,7 +23,7 @@ Every model is built in code from simple shapes with soft toon shading and a blo
 
 | Model | Current design | Used for |
 | --- | --- | --- |
-| Kart | Soft teal rounded tub with a cream rim, a rounded cream bumper at the front and back (like a bumper car), a cream seat back, a round steering wheel, torus tyres with cream hubs, headlights and tail lights. | Player |
+| Car | A small teal open-top convertible. One sculpted body shell (hood, sunken cockpit, doors, trunk), wheels with chrome spokes set into arches, headlights in rounded pods, grille, cream bumpers, a glass windshield in a chrome frame, wing mirrors, door seams and handles, dashboard and steering wheel, cream seat with a headrest, folded soft-top, tail lights, a star number plate, and a stripe and tail lip in the driver's colour. | Player |
 | Tree / hill / cloud | Two round-topped green tiers on a trunk / smooth squashed green balls / three white balls. | Scenery |
 | "Skip the rest stop" sign | Navy sign with a yellow crescent moon crossed out in red. | `allNighter` trigger |
 | Plane | White plane with a red tail and stripe, hovering low across the lane. | `redEye` trigger |

@@ -6,7 +6,7 @@ import { CONFIG } from './config.js';
 import { createRoad } from './world/road.js';
 import { ChaseCamera } from './world/camera.js';
 import { createWeather } from './world/weather.js';
-import { buildKart } from './world/models.js';
+import { buildKart } from './world/car.js';
 import { HostLink } from './net.js';
 import { Input } from './systems/input.js';
 import { Sound } from './systems/sound.js';
@@ -138,18 +138,28 @@ muteBtn.setAttribute('role', 'switch');
 muteBtn.setAttribute('aria-label', 'Sound');
 muteBtn.innerHTML = '<span class="st-label">Sound</span><span class="st-track"><span class="st-knob"></span></span><span class="st-state">ON</span>';
 document.getElementById('stage').appendChild(muteBtn);
-muteBtn.addEventListener('click', () => app.toggleMute());
-app.input.on('mute', () => app.toggleMute());
+// If the page was still silent, the first click on the switch (or first M press) only starts the sound;
+// it doesn't also switch it off (it already says ON).
+let justUnlocked = false;
+const toggleUnlessFirst = () => { if (justUnlocked && !app.muted) return; app.toggleMute(); };
+muteBtn.addEventListener('click', toggleUnlessFirst);
+app.input.on('mute', toggleUnlessFirst);
 // Mute is remembered for this browser session.
 let startMuted = false;
 try { startMuted = sessionStorage.getItem('supporty-muted') === '1'; } catch { /* private mode */ }
 app.muted = !startMuted;
 app.toggleMute();
 
-// Audio unlocks on any click or key press on this page (the phone controller doesn't count).
-const unlockAudio = () => app.sound.unlock();
-window.addEventListener('pointerdown', unlockAudio);
-window.addEventListener('keydown', unlockAudio);
+// Browsers only allow sound after a click or key press on this page (the phone controller doesn't count).
+// Try right away anyway: some browsers allow it for sites the visitor has played before.
+const unlockAudio = () => {
+  justUnlocked = !app.sound.unlocked; // true only for the gesture that starts the sound
+  app.sound.unlock();
+  setTimeout(() => { justUnlocked = false; }, 0); // after this gesture's click / key handlers have run
+};
+window.addEventListener('pointerdown', unlockAudio, true);
+window.addEventListener('keydown', unlockAudio, true);
+app.sound.unlock();
 // Soft click for buttons and for advancing menu / onboarding screens.
 document.addEventListener('click', (e) => { if (e.target.closest('button')) app.sound.play('click'); });
 for (const ev of ['start', 'pull']) app.input.on(ev, () => { if (app.current !== app.screens.drive) app.sound.play('click'); });

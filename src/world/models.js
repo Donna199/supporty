@@ -59,10 +59,10 @@ const sphereGeo = (r, seg) => shared(`sp${n2(r)},${seg}`, () => new THREE.Sphere
 const cylGeo = (rt, rb, h, seg) => shared(`cy${n2(rt)},${n2(rb)},${n2(h)},${seg}`, () => new THREE.CylinderGeometry(rt, rb, h, seg));
 const coneGeo = (r, h, seg) => shared(`co${n2(r)},${n2(h)},${seg}`, () => new THREE.ConeGeometry(r, h, seg));
 const capsuleGeo = (r, len, seg = 16) => shared(`ca${n2(r)},${n2(len)},${seg}`, () => new THREE.CapsuleGeometry(r, len, 4, seg));
-const torusGeo = (r, tube, radial, tubular) => shared(`to${n2(r)},${n2(tube)},${radial},${tubular}`, () => new THREE.TorusGeometry(r, tube, radial, tubular));
+export const torusGeo = (r, tube, radial, tubular) => shared(`to${n2(r)},${n2(tube)},${radial},${tubular}`, () => new THREE.TorusGeometry(r, tube, radial, tubular));
 
 // ---------- Shape helpers ----------
-function mesh(geo, color, x = 0, y = 0, z = 0) {
+export function mesh(geo, color, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(geo, toon(color));
   m.position.set(x, y, z);
   return m;
@@ -74,7 +74,7 @@ const softBox = (w, h, d, color, x, y, z, radius) => mesh(roundedBoxGeo(w, h, d,
 export const ball = (r, color, x, y, z, seg = 16) => mesh(sphereGeo(r, Math.max(12, seg)), color, x, y, z);
 export const cyl = (rt, rb, h, color, x, y, z, seg = 16) => mesh(cylGeo(rt, rb, h, Math.max(16, seg)), color, x, y, z);
 export const cone = (r, h, color, x, y, z, seg = 16) => mesh(coneGeo(r, h, Math.max(12, seg)), color, x, y, z);
-const capsule = (r, len, color, x, y, z, seg) => mesh(capsuleGeo(r, len, seg), color, x, y, z);
+export const capsule = (r, len, color, x, y, z, seg) => mesh(capsuleGeo(r, len, seg), color, x, y, z);
 
 /** Gives a geometry one flat vertex colour, so many parts can be merged into one mesh. */
 export function paint(geo, color) {
@@ -453,7 +453,7 @@ export function buildDriver(name) {
 
 // ---------- Kart (no sketch yet: see MODELS.md) ----------
 let starGeo;
-function star() {
+export function star() {
   if (!starGeo) {
     const sh = new THREE.Shape();
     for (let i = 0; i < 10; i++) {
@@ -464,122 +464,11 @@ function star() {
   }
   return starGeo;
 }
-const kb = (w, h, d, color, x, y, z, r) => mesh(roundedBoxGeo(w, h, d, r, 2), color, x, y, z); // kart panels (fewer segments: they sit far from the camera)
+export const kb = (w, h, d, color, x, y, z, r) => mesh(roundedBoxGeo(w, h, d, r, 2), color, x, y, z); // kart panels (fewer segments: they sit far from the camera)
 
 /** Chunky rounded toy go-kart (bumper-car feel) with the chosen driver sitting in it. Faces +Z.
  *  Returns { group, setLean, spin }. */
-export function buildKart(driverName) {
-  const accent = driverName === 'boy' ? C.kartAccentBoy : C.kartAccentGirl;
-  const group = new THREE.Group();
-  const tilt = new THREE.Group(); // body roll + bounce
-  group.add(tilt);
-
-  // Tub the driver sits in, with a darker cockpit inset, bulging side panels and accent stripes.
-  tilt.add(kb(1.56, 0.56, 2.5, C.kart, 0, 0.7, -0.1, 0.26));
-  tilt.add(kb(1.12, 0.05, 1.05, C.kartDark, 0, 0.975, -0.4, 0.025));
-  for (const s of [-1, 1]) {
-    tilt.add(kb(0.22, 0.46, 2.0, C.kart, s * 0.8, 0.64, -0.08, 0.11));
-    tilt.add(kb(0.05, 0.1, 1.7, accent, s * 0.915, 0.7, -0.08, 0.025));
-  }
-  // Front: rounded nose, short sloped hood, bumper and two round headlights.
-  tilt.add(kb(1.2, 0.42, 0.7, C.kart, 0, 0.62, 1.22, 0.2));
-  const hood = kb(1.12, 0.14, 0.8, C.kart, 0, 0.94, 0.86, 0.07);
-  hood.rotation.x = 0.22; // slopes down toward the nose
-  tilt.add(hood);
-  const bumper = capsule(0.26, 1.0, C.kartTrim, 0, 0.5, 1.58, 24);
-  bumper.rotation.z = PI / 2;
-  tilt.add(bumper);
-  for (const s of [-1, 1]) tilt.add(ball(0.12, 0xfff3c4, s * 0.4, 0.72, 1.55, 16));
-  // Dashboard, steering column and a round steering wheel angled toward the driver.
-  tilt.add(kb(1.0, 0.26, 0.3, C.kartDark, 0, 1.08, 0.6, 0.1));
-  const wheelPos = new THREE.Vector3(0, 1.3, 0.42), wheelTilt = -0.6;
-  const column = cyl(0.045, 0.045, 0.3, C.tyre, 0, 1.2, 0.52, 16);
-  column.rotation.x = -0.8;
-  tilt.add(column);
-  const wheel = mesh(torusGeo(0.26, 0.06, 12, 32), C.tyre);
-  wheel.position.copy(wheelPos);
-  wheel.rotation.x = wheelTilt;
-  tilt.add(wheel);
-  // Seat with a rounded backrest behind the driver.
-  const seat = kb(1.0, 0.8, 0.22, C.kartTrim, 0, 1.32, -1.02, 0.11);
-  seat.rotation.x = -0.12;
-  tilt.add(seat);
-  // Rear (what the chase camera sees): bumper, tail lights, spoiler, exhausts, round number plate with a star.
-  const rear = capsule(0.24, 0.62, C.kartTrim, 0, 0.5, -1.42, 24);
-  rear.rotation.z = PI / 2;
-  tilt.add(rear);
-  for (const s of [-1, 1]) {
-    tilt.add(kb(0.28, 0.14, 0.08, 0xe0524f, s * 0.5, 0.8, -1.37, 0.04));
-    const pipe = cyl(0.075, 0.09, 0.34, 0xb9bec4, s * 0.62, 0.38, -1.42, 16);
-    pipe.rotation.x = PI / 2;
-    tilt.add(pipe);
-    const hole = cyl(0.045, 0.045, 0.02, C.tyre, s * 0.62, 0.38, -1.6, 12);
-    hole.rotation.x = PI / 2;
-    tilt.add(hole);
-    tilt.add(kb(0.08, 0.36, 0.1, C.kartTrim, s * 0.42, 1.12, -1.3, 0.035)); // spoiler posts
-  }
-  tilt.add(kb(1.3, 0.09, 0.36, accent, 0, 1.33, -1.32, 0.04)); // spoiler wing
-  const plate = cyl(0.2, 0.2, 0.04, C.kartTrim, 0, 0.78, -1.38, 24);
-  plate.rotation.x = PI / 2;
-  tilt.add(plate);
-  const st = new THREE.Mesh(star(), toon(accent, { side: THREE.DoubleSide }));
-  st.position.set(0, 0.78, -1.405);
-  tilt.add(st);
-
-  // Driver in the seat, hands on the wheel at 10 and 2 o'clock.
-  const driver = buildDriver(driverName);
-  const bodyPos = new THREE.Vector3(0, 1.05, -0.35);
-  driver.body.position.copy(bodyPos);
-  const grip = (s) => new THREE.Vector3(s * 0.225, 0.13, 0).applyEuler(new THREE.Euler(wheelTilt, 0, 0)).add(wheelPos).sub(bodyPos);
-  driver.reach([grip(-1), grip(1)]);
-  tilt.add(driver.body);
-
-  // Wheels: chunky torus tyres around a disc, cream hubcaps, rounded mudguards over each.
-  const wheels = [];
-  const guardGeo = shared('mudguard', () => new THREE.CylinderGeometry(0.56, 0.56, 0.5, 20, 1, true, 0, PI));
-  for (const [x, z] of [[-1.02, 1.05], [1.02, 1.05], [-1.02, -0.95], [1.02, -0.95]]) {
-    const w = new THREE.Group();
-    const tyre = mesh(torusGeo(0.3, 0.14, 12, 28), C.tyre);
-    tyre.rotation.y = PI / 2;
-    const disc = cyl(0.3, 0.3, 0.3, C.tyre, 0, 0, 0, 24);
-    disc.rotation.z = PI / 2;
-    const hub = cyl(0.2, 0.2, 0.34, C.kartTrim, 0, 0, 0, 24);
-    hub.rotation.z = PI / 2;
-    const bolt = ball(0.06, 0xd9cfbd, Math.sign(x) * 0.18, 0, 0, 12);
-    w.add(tyre, disc, hub, bolt);
-    w.position.set(x, 0.44, z);
-    group.add(w);
-    wheels.push(w);
-    const guard = new THREE.Mesh(guardGeo, toon(C.kart, { side: THREE.DoubleSide }));
-    guard.rotation.z = PI / 2;
-    guard.position.set(x, 0.46, z);
-    tilt.add(guard);
-    const lip = mesh(shared('guardlip', () => new THREE.TorusGeometry(0.56, 0.035, 6, 20, PI)), C.kartTrim);
-    lip.rotation.y = PI / 2;
-    lip.position.set(x + Math.sign(x) * 0.25, 0.46, z);
-    tilt.add(lip);
-  }
-  group.add(blobShadow(2.9, 4.2));
-
-  let bounce = 0;
-  return {
-    group,
-    /** lean: -1..1, tips the kart body, driver body and head into the turn. */
-    setLean(lean) {
-      tilt.rotation.z = -lean * 0.09;
-      driver.body.rotation.z = -lean * 0.06;
-      driver.head.rotation.z = -lean * 0.12;
-      driver.head.rotation.y = lean * 0.18;
-    },
-    /** Wheels roll with distance; the body bounces gently while driving. */
-    spin(dist) {
-      for (const w of wheels) w.rotation.x += dist / 0.44;
-      bounce += dist;
-      tilt.position.y = Math.abs(Math.sin(bounce * 1.1)) * 0.035;
-      if (driver.bow) driver.bow.rotation.x = Math.sin(bounce * 2.2) * 0.035; // ~2° bow wobble, in step with the bounce
-    },
-  };
-}
+// The car itself is built in car.js (buildKart), which uses the helpers above and buildDriver.
 
 // ---------- Scenery ----------
 /** Soft tier of leaves: a cone shape with a gently rounded top. */
