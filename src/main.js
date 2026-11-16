@@ -27,8 +27,7 @@ import { RoadGuideScreen } from './screens/RoadGuideScreen.js';
 
 // ---------- Renderer and world ----------
 const canvas = document.getElementById('game');
-const testMode = Number(new URLSearchParams(location.search).get('timescale')) > 1;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: testMode });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 2200);
@@ -212,40 +211,20 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// ?debug=1 shows fps and triangle count (budget: under 50k).
-const debugEl = new URLSearchParams(location.search).has('debug') ? document.createElement('pre') : null;
-if (debugEl) {
-  debugEl.style.cssText = 'position:fixed;left:8px;bottom:8px;margin:0;background:#fffaf0;padding:4px 8px;border:2px solid #3b3433;border-radius:8px;font:700 13px Inter;z-index:9';
-  document.body.appendChild(debugEl);
-}
-let frames = 0, fpsTime = 0;
-// ?timescale=8 fast-forwards the game (testing only). Errors are noted on <body data-error>.
-const timeScale = Math.max(1, Math.min(40, Number(new URLSearchParams(location.search).get('timescale')) || 1));
-window.addEventListener('error', (e) => { document.body.dataset.error = e.message; });
+window.addEventListener('error', (e) => { document.body.dataset.error = e.message; }); // errors are noted on <body data-error>
 
 const clock = new THREE.Clock();
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
   app.input.update();
-  for (let i = 0; i < timeScale; i++) app.current?.update(dt);
+  app.current?.update(dt);
   weather.update(dt);
   renderer.render(scene, camera);
-  if (debugEl) {
-    frames++;
-    fpsTime += dt;
-    if (fpsTime >= 0.5) { debugEl.dataset.fps = Math.round(frames / fpsTime); frames = fpsTime = 0; }
-    debugEl.textContent = `t=${(app.screens.drive.time || 0).toFixed(1)} · ${debugEl.dataset.fps || '…'} fps · ${renderer.info.render.triangles} triangles · ${renderer.info.render.calls} draw calls`;
-  }
 }
-if (timeScale > 1) setInterval(tick, 16); // test mode: also runs where animation frames don't (headless)
-else renderer.setAnimationLoop(tick);
+renderer.setAnimationLoop(tick);
 
-// Debug shortcuts for testing: index.html?driver=boy&screen=drive
-const params = new URLSearchParams(location.search);
-if (params.get('driver') === 'boy') app.driver = 'boy';
 let savedGraphics = null;
 try { savedGraphics = sessionStorage.getItem('supporty-graphics'); } catch { /* private mode */ }
-app.setGraphics(params.get('graphics') || savedGraphics || 'high');
+app.setGraphics(savedGraphics || 'high');
 world.setDriver(app.driver);
-app.show(app.screens[params.get('screen')] ? params.get('screen') : 'title');
-window.__app = app; // handy for debugging in the browser console
+app.show('title');

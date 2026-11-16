@@ -4,7 +4,6 @@ Every model is built in code from simple shapes with soft toon shading and a blo
 
 - The drivers and the kart are signed-distance models in `tools/sdf/`, meshed once by `npm run models` into `assets/generated/*.glb` (one seamless surface each, split into one sub-mesh per colour so borders are sharp; a fine version for Graphics: High and a coarse `-low` version for Graphics: Low and the outline shells). `src/world/driver.js` adds the face (blinking eyes, three mouths) and `src/world/car.js` adds the spinning wheels and the glass. Scenery is in `src/world/models.js`.
 - Road items are in `src/world/itemModels.js`. They use the shared rounded shape helpers from `models.js`.
-- To view every item at once, open `index.html?screen=drive&gallery=1`.
 
 ## From your sketches
 

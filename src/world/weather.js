@@ -18,7 +18,6 @@ const PHASE_KEYS = ['stable', 'manic', 'depressive'], SEASON_KEYS = ['winter', '
 const SEASON_MID = { winter: 0.5, spring: 3.5, summer: 6.5, autumn: 9.5 }; // month (0 = January) at the middle of each season
 const PETALS = { count: 140, box: [40, 16, 50], fall: 1.6, sway: 0.8, size: 0.15 };
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const instant = new URLSearchParams(location.search).has('phase'); // testing: show a phase look at once
 
 export function createWeather(scene, camera) {
   // Sky dome with a soft vertical gradient (horizon cream, top blue). Its colour tints per phase.
@@ -176,7 +175,7 @@ export function createWeather(scene, camera) {
         d.m.position.addScaledVector(d.v, dt);
         if (d.life <= 0 || d.m.position.y < 0) d.m.visible = false;
       }
-      const k = instant ? 1 : 1 - Math.exp(-1.5 * dt);
+      const k = 1 - Math.exp(-1.5 * dt);
       for (const key of Object.keys(w)) w[key] += (target[key] - w[key]) * k;
       // Sky gradient and haze, from the palette's sky colours for this mix of phases and seasons.
       const top = skyMix(0, topColor), horizon = skyMix(1, scene.fog.color);

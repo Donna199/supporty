@@ -74,36 +74,8 @@ export class DriveScreen {
     app.statusListeners.add(onStatus);
     this.offs.push(() => app.statusListeners.delete(onStatus));
 
-    // Testing shortcuts: ?month=7 starts in July; ?gallery=1 lines up every model in front of a parked kart.
-    const params = new URLSearchParams(location.search);
-    const startMonth = Number(params.get('month'));
-    if (startMonth >= 2 && startMonth <= 12) {
-      this.time = (startMonth - 1) * CONFIG.secondsPerMonth;
-      this.spawner.skipTo(this.time);
-    }
-    if (['manic', 'depressive'].includes(params.get('phase'))) this.mood.push(params.get('phase') === 'manic' ? 999 : -999);
-    this.gallery = params.has('gallery');
-    if (this.gallery) {
-      const ids = params.get('gallery').split(',').filter(Boolean);
-      const all = ids.length ? ids : ['medCheckpoint', 'trophy', 'restStop', 'allNighter', 'redEye', 'scheduleChaos', 'loss', 'criticism', 'stigmaBillboard',
-        'routineCheckpoint', 'therapyPit', 'familyPit', 'supportive', 'cliffRamp', 'spendDetour', 'billboardPull', 'racingSigns', 'mud', 'fogFork', 'harshSigns'];
-      all.forEach((id, i) => this.items.spawn(id, { s: car.s + 16 + i * 10, lane: (i % 3) - 1, side: i % 2 ? 1 : -1 }));
-    }
-
-    // January practice month (not when testing from a later month or the model gallery).
-    this.practice = startMonth >= 2 || this.gallery ? null : new Practice(this);
-
-    // ?debug=1: keys 1 / 2 push the mood low / high, 3 / 4 remove / add a guardrail.
-    if (new URLSearchParams(location.search).has('debug')) {
-      const key = (e) => {
-        if (e.key === '1') this.mood.push(-25);
-        if (e.key === '2') this.mood.push(25);
-        if (e.key === '3') this.mood.addGuardrails(-1);
-        if (e.key === '4') this.mood.addGuardrails(1);
-      };
-      window.addEventListener('keydown', key);
-      this.offs.push(() => window.removeEventListener('keydown', key));
-    }
+    // January practice month.
+    this.practice = new Practice(this);
   }
 
   exit() {
@@ -300,7 +272,6 @@ export class DriveScreen {
     if (this.introSlow > 0 && !this.paused) { this.introSlow -= realDt; slow = Math.min(slow, CONFIG.episodeIntro.slow); }
     if (practising) slow = Math.min(slow, this.practice.timeScale);
     dt *= slow;
-    if (this.gallery) { world.placeKart(0); world.chase.follow(dt, world.kart.group.position, world.frame.fwd); this.items.update(dt, { s: -1e9, x: 0 }); return; }
     if (!this.paused) {
       // Practice month: the year clock, mood drift and mood samples wait until it is over.
       if (!practising) {

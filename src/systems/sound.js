@@ -131,10 +131,6 @@ export class Sound {
     setTimeout(() => { this.voices--; }, len * 1000 + 30);
   }
 
-  /** Testing helper: plays every sound in turn (call __app.sound.demo() in the console). */
-  demo(gap = 900) {
-    Object.keys(SOUNDS).forEach((name, i) => setTimeout(() => { console.log('♪', name); this.play(name); }, i * gap));
-  }
 }
 
 // Each returns its length in seconds (all under 0.6 s).
